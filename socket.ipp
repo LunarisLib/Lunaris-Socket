@@ -257,7 +257,17 @@ namespace Lunaris {
 		if (has_socket()) close_socket();
 
 		if (host) {
-			std::vector<SocketType> res = gen_host(config.port, protocol, static_cast<int>(config.family));
+			std::vector<SocketType> res;
+
+			if (config.family == socket_config::e_family::IPV4 || config.family == socket_config::e_family::ANY) {
+				auto _v = gen_host(config.port, protocol, static_cast<int>(socket_config::e_family::IPV4));
+				res.insert(res.end(), std::make_move_iterator(_v.begin()), std::make_move_iterator(_v.end())); // fix for linux, should not break windows...
+			}
+			if (config.family == socket_config::e_family::IPV6 || config.family == socket_config::e_family::ANY) {
+				auto _v = gen_host(config.port, protocol, static_cast<int>(socket_config::e_family::IPV6));
+				res.insert(res.end(), std::make_move_iterator(_v.begin()), std::make_move_iterator(_v.end())); // fix for linux, should not break windows...
+			}
+
 			if (!res.empty()) {
 				for (auto& i : res) add_socket(i);
 				return true;

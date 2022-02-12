@@ -79,7 +79,7 @@ namespace Lunaris {
 	/// <para>This is used to setup a socket.</para>
 	/// </summary>
 	struct socket_config {
-		enum class e_family { 
+		enum class e_family {
 			IPV4 = PF_INET,		// IPV4 is the good old XXX.XXX.XXX.XXX format IP
 			IPV6 = PF_INET6,	// IPV6 is the new FFFF:FFFF:FFFF....FFFF:FFFF stuff (hex)
 			ANY = PF_UNSPEC		// This is when you don't care or both.
