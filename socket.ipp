@@ -123,6 +123,11 @@ namespace Lunaris {
 				continue;
 			}
 
+			if (addr != nullptr && (strncmp(addr, "127.255.255.255", strlen(addr)) == 0 || strncmp(addr, "255.255.255.255", strlen(addr)) == 0)) { // broadcaster
+				int enabled = 1;
+				setsockopt(sock, SOL_SOCKET, SO_BROADCAST, (char*)&enabled, sizeof(enabled));
+			}
+
 			freeaddrinfo(AddrInfo);
 
 			if (AI == nullptr) {
