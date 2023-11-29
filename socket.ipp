@@ -35,6 +35,12 @@ namespace Lunaris {
 		return *this;
 	}
 
+	inline socket_config& socket_config::set_broadcast(const bool& var)
+	{
+		broadcaster = var;
+		return *this;
+	}
+
 	inline bool socket_config::parse(const SocketStorage& addr)
 	{
 		const auto fun_get_in_addr = [&]() -> void* {
@@ -85,7 +91,7 @@ namespace Lunaris {
 		WSACleanup(); // end
 	}
 #endif
-	inline SocketType socket_core::gen_client(const char* addr, const u_short port, const int protocol, const int family)
+	inline SocketType socket_core::gen_client(const char* addr, const u_short port, const int protocol, const int family, const bool broadcaster)
 	{
 #ifdef LUNARIS_VERBOSE_BUILD
 		PRINT_DEBUG("Creating socket client %p", this);
@@ -123,7 +129,7 @@ namespace Lunaris {
 				continue;
 			}
 
-			if (addr != nullptr && (strncmp(addr, "127.255.255.255", strlen(addr)) == 0 || strncmp(addr, "255.255.255.255", strlen(addr)) == 0)) { // broadcaster
+			if (broadcaster && protocol == SOCK_DGRAM) { // broadcaster
 				int enabled = 1;
 				setsockopt(sock, SOL_SOCKET, SO_BROADCAST, (char*)&enabled, sizeof(enabled));
 			}
@@ -279,7 +285,7 @@ namespace Lunaris {
 			}
 		}
 		else {
-			SocketType res = gen_client(config.ip_address.empty() ? nullptr : config.ip_address.c_str(), config.port, protocol, static_cast<int>(config.family));
+			SocketType res = gen_client(config.ip_address.empty() ? nullptr : config.ip_address.c_str(), config.port, protocol, static_cast<int>(config.family), config.broadcaster);
 			if (res != SocketInvalid) {
 				add_socket(res);
 				return true;
@@ -544,6 +550,12 @@ namespace Lunaris {
 		if (res < 0) close_socket();
 
 		return res == len;
+	}
+
+	inline bool UDP_client::set_broadcast(const bool enable)
+	{
+		int enabled = enable ? 1 : 0;
+		return setsockopt(data->connection, SOL_SOCKET, SO_BROADCAST, (char*)&enabled, sizeof(enabled)) == 0;
 	}
 
 	inline std::vector<char> UDP_client::recv(const size_t amount, const bool wait)

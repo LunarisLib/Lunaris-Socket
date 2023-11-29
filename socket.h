@@ -88,6 +88,7 @@ namespace Lunaris {
 		e_family family = e_family::ANY;
 		std::string ip_address;
 		u_short port = 50420;
+		bool broadcaster = false; // only valid for UDP client ones
 
 		/// <summary>
 		/// <para>Prints the ip and port for you as a string.</para>
@@ -115,6 +116,14 @@ namespace Lunaris {
 		/// <param name="{std::string}">The IP/path.</param>
 		/// <returns>{socket_config&amp;} Itself.</returns>
 		socket_config& set_ip_address(const std::string&);
+
+		/// <summary>
+		/// <para>ONLY FOR UDP CLIENT!</para>
+		/// <para>Enable broadcast feature? (You have to use a mask as the IP, like 255.255.255.255 or something)</para>
+		/// </summary>
+		/// <param name="{bool}">Enable broadcast on UDP client?</param>
+		/// <returns>{socket_config&amp;} Itself.</returns>
+		socket_config& set_broadcast(const bool&);
 
 		/// <summary>
 		/// <para>Get back information from a SocketStorage (translation).</para>
@@ -146,8 +155,9 @@ namespace Lunaris {
 		/// <param name="{u_short}">Port.</param>
 		/// <param name="{int}">Protocol.</param>
 		/// <param name="{int}">Family.</param>
+		/// <param name="{bool}">Broadcast enabled? (ONLY UDP CLIENT).</param>
 		/// <returns>{SocketType} The resulting socket.</returns>
-		SocketType gen_client(const char*, const u_short, const int, const int);
+		SocketType gen_client(const char*, const u_short, const int, const int, const bool = false);
 
 		/// <summary>
 		/// <para>Generate host sockets.</para>
@@ -388,6 +398,13 @@ namespace Lunaris {
 		/// <param name="{size_t}">Buffer length.</param>
 		/// <returns>{bool} True if success.</returns>
 		bool send(const char*, const size_t);
+
+		/// <summary>
+		/// <para>Enable or disable broadcast feature on UDP packages.</para>
+		/// </summary>
+		/// <param name="{bool}">Enable socket option?</param>
+		/// <returns>{bool} True if success.</returns>
+		bool set_broadcast(const bool);
 
 		/// <summary>
 		/// <para>Tries to recv some data.</para>
