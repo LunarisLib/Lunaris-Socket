@@ -232,6 +232,17 @@ namespace Lunaris {
 		return sockets;
 	}
 
+	inline size_t socket_core::next_recv_size(std::vector<SocketType>& options, const long to)
+	{
+		const auto opt = common_select(options, to);
+		if (opt == SocketInvalid) return 0;
+
+		u_long arg{};
+		ioctlSocket(opt, FIONREAD, &arg);
+
+		return static_cast<size_t>(arg);
+	}
+
 	inline SocketType socket_core::common_select(std::vector<SocketType>& servers, const long to)
 	{
 		if (servers.size() == 0) return SocketInvalid;
@@ -246,7 +257,7 @@ namespace Lunaris {
 			pul[p].fd = servers[p];
 		}
 
-		int res = pollSocket(pul.get(), nfds, to);
+		int res = pollSocket(pul.get(), nfds, to > 0 ? to : -1);
 
 		if (res < 0) {
 			return SocketInvalid;
@@ -349,6 +360,14 @@ namespace Lunaris {
 		socket_config conf;
 		if (!conf.parse(data->info_host)) return {};
 		return conf;
+	}
+
+	template<int protocol, bool host>
+	inline size_t socket_client<protocol, host>::recv_buffer_size(const long to) const
+	{
+		std::vector<SocketType> vec;
+		vec.push_back(data->connection);
+		return next_recv_size(vec, to);
 	}
 
 
@@ -635,9 +654,6 @@ namespace Lunaris {
 		const int expected = static_cast<int>(amount > socket_maximum_udp_buffer_size ? socket_maximum_udp_buffer_size : amount);
 		raw.resize(expected);
 
-		SocketStorage From{};
-		socklen_t FromLen = sizeof(SocketStorage);
-
 #ifdef LUNARIS_VERBOSE_BUILD
 		PRINT_DEBUG("UDP listening-like host %p", this);
 #endif
@@ -666,6 +682,11 @@ namespace Lunaris {
 #endif
 
 		return UDP_host_handler(selected, _temp, std::move(raw));
+	}
+
+	inline size_t UDP_host::recv_buffer_size(const long to) const
+	{
+		return next_recv_size(data->listeners, to);
 	}
 
 	inline UDP_host::UDP_host_handler::UDP_host_handler(SocketType sock, const SocketStorage& ad, std::vector<char>&& raw)

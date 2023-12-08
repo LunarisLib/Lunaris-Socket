@@ -157,7 +157,7 @@ namespace Lunaris {
 		/// <param name="{int}">Family.</param>
 		/// <param name="{bool}">Broadcast enabled? (ONLY UDP CLIENT).</param>
 		/// <returns>{SocketType} The resulting socket.</returns>
-		SocketType gen_client(const char*, const u_short, const int, const int, const bool = false);
+		static SocketType gen_client(const char*, const u_short, const int, const int, const bool = false);
 
 		/// <summary>
 		/// <para>Generate host sockets.</para>
@@ -166,7 +166,14 @@ namespace Lunaris {
 		/// <param name="{int}">Protocol.</param>
 		/// <param name="{int}">Family.</param>
 		/// <returns>{vector&lt;SocketType&gt;} The resulting combo of sockets.</returns>
-		std::vector<SocketType> gen_host(const u_short, const int, const int);
+		static std::vector<SocketType> gen_host(const u_short, const int, const int);
+
+		/// <summary>
+		/// <para>Get pending data in buffer on one (next) socket ready to recv.</para>
+		/// </summary>
+		/// <param name="{long}">Timeout, in seconds. Zero means infinite.</param>
+		/// <returns>{size_t} Length, in bytes, of buffered data in the next socket, or zero if no data buffered.</returns>
+		static size_t next_recv_size(std::vector<SocketType>&, const long = 0);
 
 		// common for server
 
@@ -177,7 +184,7 @@ namespace Lunaris {
 		/// <param name="{vector&lt;SocketType&gt;}">List of sockets.</param>
 		/// <param name="{long}">Timeout in seconds. 0 means infinite.</param>
 		/// <returns>{SocketType} A valid socket if successful.</returns>
-		SocketType common_select(std::vector<SocketType>&, const long = 0);
+		static SocketType common_select(std::vector<SocketType>&, const long = 0);
 	};
 
 	/// <summary>
@@ -214,6 +221,8 @@ namespace Lunaris {
 		};
 
 		std::unique_ptr<_data> data = std::make_unique<_data>();
+
+		using socket<protocol, host>::next_recv_size;
 
 		/// <summary>
 		/// <para>Close the connection.</para>
@@ -260,6 +269,13 @@ namespace Lunaris {
 		/// </summary>
 		/// <returns>{socket_config} Socket information.</returns>
 		socket_config info() const;
+
+		/// <summary>
+		/// <para>Get recv buffer available.</para>
+		/// </summary>
+		/// <param name="{long}">Timeout, in seconds. Zero means infinite.</param>
+		/// <returns>{size_t} Amount to recv safely, or zero if nothing.</returns>
+		size_t recv_buffer_size(const long = 0) const;
 	};
 
 	/// <summary>
@@ -273,6 +289,8 @@ namespace Lunaris {
 		};
 
 		std::unique_ptr<_data> data = std::make_unique<_data>();
+
+		using socket<protocol, host>::common_select;
 
 		/// <summary>
 		/// <para>Close all connections</para>
@@ -302,6 +320,7 @@ namespace Lunaris {
 		/// </summary>
 		/// <returns>{bool} True if has no valid socket.</returns>
 		bool empty() const;
+
 	public:
 		using socket<protocol, host>::setup;
 	};
@@ -317,6 +336,7 @@ namespace Lunaris {
 		using socket_client<SOCK_STREAM, false>::empty;
 		using socket_client<SOCK_STREAM, false>::close_socket;
 		using socket_client<SOCK_STREAM, false>::info;
+		using socket_client<SOCK_STREAM, false>::recv_buffer_size;
 
 		/// <summary>
 		/// <para>Send some data through the socket.</para>
@@ -383,6 +403,7 @@ namespace Lunaris {
 		using socket_client<SOCK_DGRAM, false>::valid;
 		using socket_client<SOCK_DGRAM, false>::empty;
 		using socket_client<SOCK_DGRAM, false>::close_socket;
+		using socket_client<SOCK_DGRAM, false>::recv_buffer_size;
 
 		/// <summary>
 		/// <para>Send some data through the socket.</para>
@@ -452,7 +473,14 @@ namespace Lunaris {
 		/// <param name="{size_t}">The package size.</param>
 		/// <param name="{long}">Timeout, in seconds. Zero means infinite.</param>
 		/// <returns>{UDP_host_handler} A UDP client-like object that you can answer directly to. You can't recv from it because all requests goes to this original host.</returns>
-		UDP_host_handler recv(const size_t, const long = 0); // package size, timeout time
+		UDP_host_handler recv(const size_t, const long = 0);
+
+		/// <summary>
+		/// <para>Get recv buffer available in all sockets in this.</para>
+		/// </summary>
+		/// <param name="{long}">Timeout, in seconds. Zero means infinite.</param>
+		/// <returns>{size_t} Amount to recv safely, or zero if nothing.</returns>
+		size_t recv_buffer_size(const long = 0) const;
 	};
 
 	/// <summary>
