@@ -32,6 +32,7 @@
 #include <thread>
 #include <stdexcept>
 #include <functional>
+#include <algorithm>
 
 #ifdef _WIN32
 using SocketType = SOCKET;
