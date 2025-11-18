@@ -1,7 +1,7 @@
 #include <Lunaris/socket.h>
 
-#include <stdio.h>
+namespace Lunaris {
+namespace Socket {
 
-void hello_world2() {
-    printf("Hello, World 2!\n");
+}
 }
