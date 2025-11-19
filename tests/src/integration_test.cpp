@@ -22,8 +22,17 @@ int test(const std::string& name, std::function<server_ptr()> get_server, std::f
 
 
 int main() {
-    test("[TCP v4]", []{return server_ptr(new LS::TCP::Server(3369));}, []{return client_ptr(new LS::TCP::Client("127.0.0.1", 3369));});
-    test("[UDP v4]", []{return server_ptr(new LS::UDP::Server(3369));}, []{return client_ptr(new LS::UDP::Client("127.0.0.1", 3369));});
+    int res;
+    
+    res = test("[TCP v4]", []{return server_ptr(new LS::TCP::Server(3369));}, []{return client_ptr(new LS::TCP::Client("127.0.0.1", 3369));});
+    if (res != 0) {
+        std::cout << "Failed at test TCP v4!";
+        return 1;
+    }
+
+    //test("[UDP v4]", []{return server_ptr(new LS::UDP::Server(3369));}, []{return client_ptr(new LS::UDP::Client("127.0.0.1", 3369));});
+
+    return 0;
 }
 
 
