@@ -137,6 +137,11 @@ namespace Socket {
         return m_mem.data();
     }
 
+    size_t DataFrame::size() const
+    {
+        return m_mem.size();
+    }
+
     void DataFrame::set(const unsigned char* data, const size_t len)
     {
         m_mem.assign(data, data + len);

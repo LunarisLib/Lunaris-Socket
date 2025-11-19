@@ -66,14 +66,35 @@ void test1()
     frame >> rec_4; std::cout << "__ read: " << rec_4 << "\n";
     frame >> rec_5; std::cout << "__ read: " << rec_5 << "\n";
 
+    constexpr size_t expected_len = 
+        sizeof(exp_0) +
+        sizeof(exp_1) +
+        sizeof(exp_2) +
+        sizeof(exp_3) +
+        sizeof(exp_4) +
+        sizeof(exp_5) +
+        sizeof(base_str) + sizeof(uint64_t); // flag
 
-    if (
-        exp_0 != rec_0 ||
-        exp_1 != rec_1 ||
-        exp_2 != rec_2 ||
-        exp_3 != rec_3 ||
-        exp_4 != rec_4 ||
-        exp_5 != rec_5 ||
-        exp_str != rec_str || exp_str.length() != rec_str.length() || rec_str.length() != (sizeof(base_str))
-    ) throw std::runtime_error("Mismatch on value expected vs obtained!");
+    if (exp_0 != rec_0) 
+        throw std::runtime_error("Mismatch values for #0: " + std::to_string(exp_0) + " != " + std::to_string(rec_0));
+    if (exp_1 != rec_1) 
+        throw std::runtime_error("Mismatch values for #1: " + std::to_string(exp_1) + " != " + std::to_string(rec_1));
+    if (exp_2 != rec_2) 
+        throw std::runtime_error("Mismatch values for #2: " + std::to_string(exp_2) + " != " + std::to_string(rec_2));
+    if (exp_3 != rec_3) 
+        throw std::runtime_error("Mismatch values for #3: " + std::to_string(exp_3) + " != " + std::to_string(rec_3));
+    if (exp_4 != rec_4) 
+        throw std::runtime_error("Mismatch values for #4: " + std::to_string(exp_4) + " != " + std::to_string(rec_4));
+    if (exp_5 != rec_5) 
+        throw std::runtime_error("Mismatch values for #5: " + std::to_string(exp_5) + " != " + std::to_string(rec_5));
+
+    if (exp_str != rec_str || exp_str.length() != rec_str.length() || rec_str.length() != (sizeof(base_str)))
+        throw std::runtime_error("Mismatch values for strings! Sizes: "
+            "exp:" + std::to_string(exp_str.length()) +
+            "; rec:" + std::to_string(rec_str.length()) +
+            "; orig:" + std::to_string(sizeof(base_str))
+        );
+
+    if (expected_len != frame.size())
+        throw std::runtime_error("Mismatch size of frame: " + std::to_string(expected_len) + " != " + std::to_string(frame.size()));
 }

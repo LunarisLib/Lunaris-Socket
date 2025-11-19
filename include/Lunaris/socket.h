@@ -33,6 +33,7 @@ namespace Socket {
         DataFrame& operator>>(double&);
 
         const unsigned char* data() const;
+        size_t size() const;
         void set(const unsigned char*, const size_t);
     private:
         std::vector<unsigned char> m_mem;

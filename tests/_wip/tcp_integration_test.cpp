@@ -41,7 +41,7 @@ void main_host(bool& keep_alive, std::condition_variable& cond)
 }
 
 int main() {
-    std::cout << "Starting test...";
+    std::cout << "Starting test...\n";
 
     bool keep_alive = false;
     std::condition_variable cond;
