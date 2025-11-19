@@ -21,7 +21,8 @@ int host_recv_send_until(server_ptr server, std::atomic<bool>& keep_alive);
 int test(const std::string& name, std::function<server_ptr()> get_server, std::function<client_ptr()> get_client);
 
 
-int main() {
+int main()
+{
     int res;
     
     res = test("[TCP v4]", []{return server_ptr(new LS::TCP::Server(3369));}, []{return client_ptr(new LS::TCP::Client("127.0.0.1", 3369));});

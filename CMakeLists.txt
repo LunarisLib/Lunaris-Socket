@@ -8,6 +8,7 @@ project(lunaris-socket
 
 add_library(${PROJECT_NAME}
     src/dataframe.cpp
+    src/tools.cpp
     src/tcp_socket.cpp
     src/udp_socket.cpp
 )
