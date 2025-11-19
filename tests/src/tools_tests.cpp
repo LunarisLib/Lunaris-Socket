@@ -1,4 +1,4 @@
-#include <Lunaris/tools.h>
+#include <Lunaris/socket.h>
 
 #include <iostream>
 
@@ -13,7 +13,14 @@ bool test_ipv4();
 bool test_ipv6();
 bool test_anys();
 
-namespace LST = Lunaris::Socket::Tools;
+namespace Lunaris {
+    namespace Socket {
+        extern int _get_family_from_ip_addr(const std::string& ip);
+    }
+}
+
+namespace LS = Lunaris::Socket;
+
 
 constexpr const char* ipv4_examples[] = {
     "0.0.0.0",
@@ -75,7 +82,7 @@ bool test_ipv4()
     std::cout << "Testing IPV4 scenarios...\n";
 
     for(const auto& i : ipv4_examples) {
-        if (!assert_inet(LST::get_family_from_ip_addr(i))) {
+        if (!assert_inet(LS::_get_family_from_ip_addr(i))) {
             success = false;
             std::cout << "- " << i << " | FAILED\n";
         }
@@ -84,7 +91,7 @@ bool test_ipv4()
         }
     }
     for(const auto& i : ipv6_examples) {
-        if (assert_inet(LST::get_family_from_ip_addr(i))) {
+        if (assert_inet(LS::_get_family_from_ip_addr(i))) {
             success = false;
             std::cout << "- " << i << " | FAILED\n";
         }
@@ -93,7 +100,7 @@ bool test_ipv4()
         }
     }
     for(const auto& i : other_examples) {
-        if (assert_inet(LST::get_family_from_ip_addr(i))) {
+        if (assert_inet(LS::_get_family_from_ip_addr(i))) {
             success = false;
             std::cout << "- " << i << " | FAILED\n";
         }
@@ -113,7 +120,7 @@ bool test_ipv6()
     std::cout << "Testing IPV6 scenarios...\n";
 
     for(const auto& i : ipv4_examples) {
-        if (assert_inet(LST::get_family_from_ip_addr(i))) {
+        if (assert_inet(LS::_get_family_from_ip_addr(i))) {
             success = false;
             std::cout << "- " << i << " | FAILED\n";
         }
@@ -122,7 +129,7 @@ bool test_ipv6()
         }
     }
     for(const auto& i : ipv6_examples) {
-        if (!assert_inet(LST::get_family_from_ip_addr(i))) {
+        if (!assert_inet(LS::_get_family_from_ip_addr(i))) {
             success = false;
             std::cout << "- " << i << " | FAILED\n";
         }
@@ -131,7 +138,7 @@ bool test_ipv6()
         }
     }
     for(const auto& i : other_examples) {
-        if (assert_inet(LST::get_family_from_ip_addr(i))) {
+        if (assert_inet(LS::_get_family_from_ip_addr(i))) {
             success = false;
             std::cout << "- " << i << " | FAILED\n";
         }
@@ -151,7 +158,7 @@ bool test_anys()
     std::cout << "Testing ANY scenarios...\n";
 
     for(const auto& i : ipv4_examples) {
-        if (assert_inet(LST::get_family_from_ip_addr(i))) {
+        if (assert_inet(LS::_get_family_from_ip_addr(i))) {
             success = false;
             std::cout << "- " << i << " | FAILED\n";
         }
@@ -160,7 +167,7 @@ bool test_anys()
         }
     }
     for(const auto& i : ipv6_examples) {
-        if (assert_inet(LST::get_family_from_ip_addr(i))) {
+        if (assert_inet(LS::_get_family_from_ip_addr(i))) {
             success = false;
             std::cout << "- " << i << " | FAILED\n";
         }
@@ -169,7 +176,7 @@ bool test_anys()
         }
     }
     for(const auto& i : other_examples) {
-        if (!assert_inet(LST::get_family_from_ip_addr(i))) {
+        if (!assert_inet(LS::_get_family_from_ip_addr(i))) {
             success = false;
             std::cout << "- " << i << " | FAILED\n";
         }

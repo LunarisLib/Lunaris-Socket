@@ -4,6 +4,9 @@
 #include <string>
 #include <sstream>
 #include <vector>
+#include <memory>
+
+#include <Lunaris/types.h>
 
 namespace Lunaris {
 namespace Socket {
@@ -43,6 +46,7 @@ namespace Socket {
         void _read(void*, const size_t);
     };
 
+
     class Client {
     public:
         virtual ~Client() = default;
@@ -50,52 +54,78 @@ namespace Socket {
         virtual size_t recv(DataFrame&, unsigned) = 0;
     };
 
+    using _OG_Client = ::Lunaris::Socket::Client;
+
     class Server {
     public:
         virtual ~Server() = default;
-        virtual Client* listen(unsigned) = 0;
-        virtual void close() = 0;
+        virtual std::unique_ptr<_OG_Client> listen(unsigned) = 0;
     };
+
+    class __NonCpyNonMov {
+        __NonCpyNonMov(__NonCpyNonMov&&) = delete;
+        void operator=(__NonCpyNonMov&&) = delete;
+        __NonCpyNonMov(const __NonCpyNonMov&) = delete;
+        void operator=(const __NonCpyNonMov&) = delete;
+    public:
+        __NonCpyNonMov() = default;
+    };
+
 
     namespace TCP {
 
-        class Client : public ::Lunaris::Socket::Client {
+        class Server;
+
+        class Client : public ::Lunaris::Socket::Client, public ::Lunaris::Socket::__NonCpyNonMov {
         public:
             Client(std::string, uint16_t);
             ~Client();
 
             size_t send(const DataFrame&) override;
-            size_t recv(DataFrame&, unsigned) override;
+            size_t recv(DataFrame&, unsigned = 0) override;
+        private:
+            friend class ::Lunaris::Socket::TCP::Server;
+
+            socket_t m_sock;
         };
 
-        class Server : public ::Lunaris::Socket::Server {
+        class Server : public ::Lunaris::Socket::Server, public ::Lunaris::Socket::__NonCpyNonMov {
         public:
             Server(uint16_t);
             ~Server();
 
-            Client* listen(unsigned) override;
-            void close() override;
+            std::unique_ptr<_OG_Client> listen(unsigned) override;
+        private:
+            std::vector<socket_t> m_socks;
         };
     };
 
+
     namespace UDP {
 
-        class Client : public ::Lunaris::Socket::Client {
+        class Server;
+
+        class Client : public ::Lunaris::Socket::Client, public ::Lunaris::Socket::__NonCpyNonMov {
         public:
             Client(std::string, uint16_t);
             ~Client();
 
             size_t send(const DataFrame&) override;
-            size_t recv(DataFrame&, unsigned) override;
+            size_t recv(DataFrame&, unsigned = 0) override;
+        private:
+            friend class ::Lunaris::Socket::UDP::Server;
+
+            socket_t m_sock;
         };
 
-        class Server : public ::Lunaris::Socket::Server {
+        class Server : public ::Lunaris::Socket::Server, public ::Lunaris::Socket::__NonCpyNonMov {
         public:
             Server(uint16_t);
             ~Server();
 
-            Client* listen(unsigned) override;
-            void close() override;
+            std::unique_ptr<_OG_Client> listen(unsigned) override;
+        private:
+            std::vector<socket_t> m_socks;
         };
     };
 }

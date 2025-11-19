@@ -15,6 +15,27 @@ using client_ptr = std::shared_ptr<LS::Client>;
 constexpr size_t TIMEOUT = 1000;
 
 
+static_assert(!std::is_copy_constructible_v<LS::TCP::Client>, "One class shouldn't be is_copy_constructible_v");
+static_assert(!std::is_copy_assignable_v   <LS::TCP::Client>, "One class shouldn't be is_copy_assignable_v");
+static_assert(!std::is_move_constructible_v<LS::TCP::Client>, "One class shouldn't be is_move_constructible_v");
+static_assert(!std::is_move_assignable_v   <LS::TCP::Client>, "One class shouldn't be is_move_assignable_v");
+
+static_assert(!std::is_copy_constructible_v<LS::TCP::Server>, "One class shouldn't be is_copy_constructible_v");
+static_assert(!std::is_copy_assignable_v   <LS::TCP::Server>, "One class shouldn't be is_copy_assignable_v");
+static_assert(!std::is_move_constructible_v<LS::TCP::Server>, "One class shouldn't be is_move_constructible_v");
+static_assert(!std::is_move_assignable_v   <LS::TCP::Server>, "One class shouldn't be is_move_assignable_v");
+
+static_assert(!std::is_copy_constructible_v<LS::UDP::Client>, "One class shouldn't be is_copy_constructible_v");
+static_assert(!std::is_copy_assignable_v   <LS::UDP::Client>, "One class shouldn't be is_copy_assignable_v");
+static_assert(!std::is_move_constructible_v<LS::UDP::Client>, "One class shouldn't be is_move_constructible_v");
+static_assert(!std::is_move_assignable_v   <LS::UDP::Client>, "One class shouldn't be is_move_assignable_v");
+
+static_assert(!std::is_copy_constructible_v<LS::UDP::Server>, "One class shouldn't be is_copy_constructible_v");
+static_assert(!std::is_copy_assignable_v   <LS::UDP::Server>, "One class shouldn't be is_copy_assignable_v");
+static_assert(!std::is_move_constructible_v<LS::UDP::Server>, "One class shouldn't be is_move_constructible_v");
+static_assert(!std::is_move_assignable_v   <LS::UDP::Server>, "One class shouldn't be is_move_assignable_v");
+
+
 int client_send_recv(client_ptr cli);
 int host_recv_send_until(server_ptr server, std::atomic<bool>& keep_alive);
 
@@ -93,7 +114,7 @@ int host_recv_send_until(server_ptr server, std::atomic<bool>& keep_alive)
     keep_alive = true;
 
     while(keep_alive.load()) {
-        LS::Client* cli = server->listen(TIMEOUT); // ms
+        std::unique_ptr<LS::Client> cli = server->listen(TIMEOUT); // ms
 
         if (!cli) {
             if (!keep_alive) return 0;
@@ -108,12 +129,12 @@ int host_recv_send_until(server_ptr server, std::atomic<bool>& keep_alive)
         }
         else {
             std::cout << "Server: Did not get frame!\n";
-            delete cli;
+            cli.reset();
             std::cout << "End of host\n";
             return 1;
         }
 
-        delete cli;
+        cli.reset();
     }
 
     return 0;
