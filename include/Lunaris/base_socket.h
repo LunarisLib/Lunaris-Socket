@@ -49,6 +49,8 @@ namespace Socket {
             int ioctl(int flag, u_long mode);
 
             address_storage get_config() const;
+
+            void close();
         protected:
             // absorbs creations, guarantees socket close
             struct sock_info {

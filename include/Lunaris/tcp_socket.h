@@ -23,6 +23,10 @@ namespace Socket {
 
         using Base::BaseSocket::valid;
         using Base::BaseSocket::operator bool;
+        using Base::BaseSocket::get_type;
+        using Base::BaseSocket::get_family;
+        using Base::BaseSocket::get_config;
+        using Base::BaseSocket::close;
     private:
         using Base::ClientSocket::ClientSocket;
 
@@ -38,6 +42,10 @@ namespace Socket {
 
         using Base::BaseSocket::valid;
         using Base::BaseSocket::operator bool;
+        using Base::BaseSocket::get_type;
+        using Base::BaseSocket::get_family;
+        using Base::BaseSocket::get_config;
+        using Base::BaseSocket::close;
     };
 
 } // namespace Socket

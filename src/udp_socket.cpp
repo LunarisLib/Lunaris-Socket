@@ -5,6 +5,7 @@
 
 #include <Lunaris/udp_socket.h>
 #include <Lunaris/exception.h>
+#include <Lunaris/debugging.h>
 
 namespace Lunaris {
 namespace Socket {
@@ -259,6 +260,7 @@ namespace Socket {
     {
         if (is_broadcast) {
             const auto current_cfg = get_config();
+            _lunaris_socket_debug_c("BROADCASTING DATA IPV4 SIZE={} PORT={}", len, current_cfg.port);
 
             sockaddr_in addr{};
             addr.sin_family = AF_INET;
@@ -278,10 +280,13 @@ namespace Socket {
             const auto current_family = get_family();
             const auto current_cfg = get_config();
 
-            if (!m_sock || current_family == e_family::UNSPEC || m_sock->type != e_socktype::DGRAM)
+            if (!m_sock || current_family == e_family::UNSPEC || m_sock->type != e_socktype::DGRAM) {
+                _lunaris_socket_debug_c("MULTICAST NOT ALLOWED ON UDP_BROADCAST!");
                 return -1;
+            }
 
             if (current_family == e_family::IPV4) {
+                _lunaris_socket_debug_c("MULTICAST DATA IPV4 SIZE={} PORT={} GROUP={}", len, current_cfg.port, m_gid);
                 sockaddr_in addr{};
                 addr.sin_family = AF_INET;
                 addr.sin_port   = htons(current_cfg.port);
@@ -298,6 +303,7 @@ namespace Socket {
             }
             
             if (current_family == e_family::IPV6) {
+                _lunaris_socket_debug_c("MULTICAST DATA IPV4 SIZE={} PORT={} GROUP={} SCOPE={}", len, current_cfg.port, m_gid, (int)m_scope);
                 sockaddr_in6 addr{};
                 addr.sin6_family = AF_INET6;
                 addr.sin6_port   = htons(current_cfg.port);
@@ -366,12 +372,13 @@ namespace Socket {
     std::shared_ptr<UDP_Host::UDP_Connection> UDP_Host::accept()
     {
         if (m_waiting_conns.size() == 0) {
+            _lunaris_socket_debug_c("ON WAIT UDP_HOST::ACCEPT");
             auto_wait_cond(m_wait_for_new_connection, 200, [this]{ return m_waiting_conns.size() > 0; });
         }
 
         std::lock_guard<std::shared_mutex> l(m_conns_mtx);
 
-        auto ptr = m_waiting_conns.front();
+        auto ptr = std::move(m_waiting_conns.front());
         m_waiting_conns.pop_front();
         m_accepted_conns.push_back(ptr);
 
@@ -422,8 +429,10 @@ namespace Socket {
             return (poll[0].revents & POLLIN) > 0;
         };
 
-        if (!m_sock) // UDP host failed to instantiate itself
+        if (!m_sock) { // UDP host failed to instantiate itself
+            _lunaris_socket_debug_c("UDP_HOST MALFORMED START, EMPTY SOCK. DROP.");
             return;
+        }
 
         bool flag_had_expired_ptr = false;
 
@@ -445,6 +454,8 @@ namespace Socket {
             if (buf_next <= 0) {
                 continue;
             }
+
+            _lunaris_socket_debug_c("UDP_HOST GOT PACKAGE EXPECTED_SIZE={}", buf_next);
 
             auto info = m_sock->make_ref();
             package pkg = {
@@ -468,10 +479,22 @@ namespace Socket {
 
             pkg.recvd = ::recvmsg(info->sock, &msg, 0);
 
-            if (pkg.recvd < 1)
+            if (pkg.recvd < 1) {
+                _lunaris_socket_debug_c("UDP_HOST DROPPED PACKAGE, FAILED");
                 continue;
+            }
 
             extract_scope_and_group_from_msghdr(msg, pkg);
+
+            if (pkg.type == package::type::none) {
+                _lunaris_socket_debug_c("UDP_HOST GOT PACKAGE TYPE: DEFAULT");
+            }
+            else if (pkg.type == package::type::broadcast) {
+                _lunaris_socket_debug_c("UDP_HOST GOT PACKAGE TYPE: BROADCAST");
+            }
+            else {
+                _lunaris_socket_debug_c("UDP_HOST GOT PACKAGE TYPE: MULTICAST GROUP={} SCOPE={}", pkg.mc_group, (int)pkg.mc_scope);
+            }
 
             { // First try to find target
                 bool found = false;
@@ -486,10 +509,14 @@ namespace Socket {
                         break;
                     }
                 }
+                if (found) {
+                    _lunaris_socket_debug_c("REDIRECTED TO WAITING CONNS");
+                    continue;
+                }
 
-                if (found) continue;
                 for (auto& i : m_accepted_conns) {
                     auto ptr = i.lock(); // guarantee it exists, if it does
+                    _lunaris_socket_debug_c("### TEST NULL={} EXPIRED={}", ptr.get() == nullptr ? "true" : "false", i.expired() ? "true" : "false");
                     if (!ptr) {
                         flag_had_expired_ptr = true;
                         continue;
@@ -502,13 +529,17 @@ namespace Socket {
                         break;
                     }
                 }
-                if (found) continue;
+                if (found) {
+                    _lunaris_socket_debug_c("REDIRECTED TO CURRENT CONNS");
+                    continue;
+                }
             }
             // Second, if it doesn't find it, it is a new target!
 
-            auto con = std::unique_ptr<UDP_Connection>(new UDP_Connection(std::move(info)));
+            auto con = std::shared_ptr<UDP_Connection>(new UDP_Connection(std::move(info)));
             con->m_dgrams.push_back(std::move(pkg));
 
+            _lunaris_socket_debug_c("UDP_HOST GOT NEW CONN!");
             std::unique_lock<std::shared_mutex> l(m_conns_mtx);
             m_waiting_conns.push_back(std::move(con));
             m_wait_for_new_connection.notify_one();

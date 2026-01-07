@@ -31,6 +31,15 @@ inline uint16_t generate_random_port() {
     return 55000 + distrib(gen);
 }
 
+inline uint32_t generate_random_in_range(uint32_t low, uint32_t high) {
+    std::random_device rd; 
+    std::mt19937 gen(rd());
+
+    std::uniform_int_distribution<> distrib(low, high);
+
+    return distrib(gen);
+}
+
 template<typename CLIENT>
 inline bool send_and_check_auto(CLIENT& cli, const std::string& str) {
     return cli.send(str.data(), str.size()) == str.size();

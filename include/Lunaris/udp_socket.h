@@ -39,6 +39,10 @@ namespace Socket {
 
         using Base::BaseSocket::valid;
         using Base::BaseSocket::operator bool;
+        using Base::BaseSocket::get_type;
+        using Base::BaseSocket::get_family;
+        using Base::BaseSocket::get_config;
+        using Base::BaseSocket::close;
     private:
         using Base::ClientSocket::ClientSocket;
 
@@ -56,6 +60,10 @@ namespace Socket {
 
         using Base::BaseSocket::valid;
         using Base::BaseSocket::operator bool;
+        using Base::BaseSocket::get_type;
+        using Base::BaseSocket::get_family;
+        using Base::BaseSocket::get_config;
+        using Base::BaseSocket::close;
     private:
         const uint16_t m_gid = 0;
         const multicast_scope m_scope = multicast_scope::link_local;
@@ -83,6 +91,13 @@ namespace Socket {
 
             bool operator==(const UDP_Connection&) const;
             bool operator!=(const UDP_Connection&) const;
+
+            using Base::BaseSocket::valid;
+            using Base::BaseSocket::operator bool;
+            using Base::BaseSocket::get_type;
+            using Base::BaseSocket::get_family;
+            using Base::BaseSocket::get_config;
+            using Base::BaseSocket::close;
         private:
             UDP_Connection(std::unique_ptr<sock_info>&& pre_cfg);
 
@@ -108,6 +123,10 @@ namespace Socket {
         
         using Base::BaseSocket::valid;
         using Base::BaseSocket::operator bool;
+        using Base::BaseSocket::get_type;
+        using Base::BaseSocket::get_family;
+        using Base::BaseSocket::get_config;
+        using Base::BaseSocket::close;
     protected:
         void async_recv();
 

@@ -3,6 +3,7 @@
 
 #include <Lunaris/socket.h>
 #include <Lunaris/exception.h>
+#include <Lunaris/debugging.h>
 
 namespace Lunaris {
 namespace Socket {
@@ -69,7 +70,6 @@ e_family _get_family_from_ip_addr(const char* ip)
     int BaseSocket::ioctl(int flag, u_long mode)
     {
         return m_sock ? platform::ioctlsocket(m_sock->sock, flag, mode) : -1;
-
     }
 
     address_storage BaseSocket::get_config() const
@@ -102,22 +102,32 @@ e_family _get_family_from_ip_addr(const char* ip)
         };
     }
 
+    void BaseSocket::close()
+    {
+        m_sock.reset();
+    }
+
     BaseSocket::sock_info::sock_info(socket_t s, e_socktype type, addr_storage_t* addr, socklen_t len)
         : sock(s), type(type), storage({}), storage_len(static_cast<socklen_t>(len)), owns_socket(true)
     {
         ::memset(&storage, 0, sizeof(storage));
         ::memcpy(&storage, addr, storage_len);
+        _lunaris_socket_debug_c("sock_info: new sock_info, sock={:08X} type={}", (uint64_t)s, (uint64_t)type);
     }
 
     BaseSocket::sock_info::~sock_info()
     {
-        if (owns_socket && platform::is_socket_valid(sock))
+        if (owns_socket && platform::is_socket_valid(sock)){
+            _lunaris_socket_debug_c("sock_info: deleted sock_info, sock={:08X}", (uint64_t)sock);
             platform::closesocket(sock);
+        }
+        _lunaris_socket_debug_c("sock_info: ref removed of sock_info, sock={:08X}", (uint64_t)sock);
         sock = platform::get_invalid_socket();
     }
 
     std::unique_ptr<BaseSocket::sock_info> BaseSocket::sock_info::make_ref() const
     {
+        _lunaris_socket_debug_c("sock_info: referencing sock_info, sock={:08X}", (uint64_t)sock);
         auto cpy = std::make_unique<sock_info>(sock, type, (addr_storage_t*)&storage, storage_len);
         cpy->owns_socket = false;
         return cpy;
