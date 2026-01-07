@@ -13,6 +13,8 @@ namespace Socket {
 
     extern e_family _get_family_from_ip_addr(const char* ip);
 
+    constexpr uint16_t multicast_group_mdns = 0x00fb;
+
     void auto_wait_cond(std::condition_variable& cond, unsigned long ms, std::function<bool()> pred)
     {
         std::mutex _w;
@@ -21,7 +23,7 @@ namespace Socket {
         while (!cond.wait_for(_l, std::chrono::milliseconds(ms), pred));
     }
 
-    constexpr in6_addr make_v6_multicast(UDP_Host::multicast_scope scope, uint16_t group)
+    constexpr in6_addr make_v6_multicast(multicast_scope scope, uint16_t group)
     {
         in6_addr addr{};
         addr.s6_addr[0] = 0xff;
@@ -55,7 +57,7 @@ namespace Socket {
                     continue;
 
                 pkg.type = UDP_Host::package::type::multicast;
-                pkg.mc_scope = static_cast<UDP_Host::multicast_scope>(dst.s6_addr[1] & 0x0f);
+                pkg.mc_scope = static_cast<multicast_scope>(dst.s6_addr[1] & 0x0f);
                 pkg.mc_group =
                     (static_cast<uint16_t>(dst.s6_addr[14]) << 8) |
                     static_cast<uint16_t>(dst.s6_addr[15]);
@@ -73,13 +75,13 @@ namespace Socket {
 
                 if (dst == 0xffffffff) {
                     pkg.type = UDP_Host::package::type::broadcast;
-                    pkg.mc_scope = UDP_Host::multicast_scope::site_local;
+                    pkg.mc_scope = multicast_scope::site_local;
                     break;
                 }
 
                 if ((dst & 0xf0000000) == 0xe0000000) {
                     pkg.type = UDP_Host::package::type::multicast;
-                    pkg.mc_scope = UDP_Host::multicast_scope::site_local;
+                    pkg.mc_scope = multicast_scope::site_local;
                     pkg.mc_group =
                         static_cast<uint16_t>(
                             ((dst >> 8) & 0xff00) |
@@ -91,12 +93,111 @@ namespace Socket {
         }
     };
 
+    constexpr void enable_broadcast_on(socket_t sock, bool enable) {
+        int yes = enable ? 1 : 0;
+        if (::setsockopt(sock, SOL_SOCKET, SO_BROADCAST, &yes, sizeof(yes)) != 0) {
+            throw socket_exception("Broadcast error - cannot toggle broadcast");
+        }
+
+        yes = 1;
+        if (::setsockopt(sock, IPPROTO_IP, IP_PKTINFO, &yes, sizeof(yes)) != 0) {
+            throw socket_exception("Broadcast error - cannot set packet info");
+        }
+    }
+    
+    constexpr void join_multicast_on(socket_t sock, e_family family, uint16_t gid, multicast_scope scope, bool join, int ttl)
+    {
+        if (gid == 0) {
+            throw socket_exception("Multicast error - invalid group id. It cannot be zero.");
+        }
+
+        if (ttl <= 0) ttl = 1;
+        if (ttl > 255) ttl = 255;
+
+        if (/*!m_sock || */family == e_family::UNSPEC/* || m_sock->type != e_socktype::DGRAM*/)
+            throw socket_exception("Multicast error - you cannot enable multicast on dual (UNSPEC) or non DGRAM socket.");
+
+        if (family == e_family::IPV4) {
+            if (scope != multicast_scope::link_local)
+                throw socket_exception("Multicast error - IPV4 only supports LINK_LOCAL as option for multicast scope.");
+
+            ip_mreq mreq{};
+            mreq.imr_interface.s_addr = INADDR_ANY;
+
+            switch (gid) {
+                case multicast_group_mdns:
+                    inet_pton(AF_INET, "224.0.0.251", &mreq.imr_multiaddr);
+                    break;
+                default:
+                    mreq.imr_multiaddr = make_v4_multicast(gid);
+                    break;
+            }
+            {
+                int on = 1;
+                if (::setsockopt(sock, IPPROTO_IP, IP_PKTINFO, &on, sizeof(on)) != 0) {
+                    throw socket_exception("Multicast error - cannot enable packet info");
+                }
+            }
+            if (::setsockopt(sock, IPPROTO_IP, IP_MULTICAST_TTL, &ttl, sizeof(ttl)) != 0) {
+                throw socket_exception("Multicast error - cannot set TTL");
+            }
+
+            int opt = join ? IP_ADD_MEMBERSHIP : IP_DROP_MEMBERSHIP;
+            if (::setsockopt(
+                sock,
+                IPPROTO_IP,
+                opt,
+                &mreq,
+                sizeof(mreq)
+            ) != 0) {
+                throw socket_exception("Multicast error - cannot add/drop multicast membership");
+            }
+
+            return;
+        }
+
+        if (family == e_family::IPV6) {
+            ipv6_mreq mreq{};
+            // safe zone: ff02::[0x1000..0x7fff]. Technically safe from 0x0001..0x7fff
+            mreq.ipv6mr_multiaddr = make_v6_multicast(scope, gid);
+            mreq.ipv6mr_interface = 0; // let the kernel decide
+
+            {
+                int on = 1;
+                if (::setsockopt(sock, IPPROTO_IPV6, IPV6_RECVPKTINFO, &on, sizeof(on)) != 0) {
+                    throw socket_exception("Multicast error - cannot enable packet info");
+                }
+            }
+            
+            if (::setsockopt(sock, IPPROTO_IPV6, IPV6_MULTICAST_HOPS, &ttl, sizeof(ttl)) != 0) {
+                throw socket_exception("Multicast error - cannot set TTL");
+            }
+
+            int opt = join ? IPV6_JOIN_GROUP : IPV6_LEAVE_GROUP;
+            if (::setsockopt(
+                sock,
+                IPPROTO_IPV6,
+                opt,
+                &mreq,
+                sizeof(mreq)
+            ) != 0) {
+                throw socket_exception("Multicast error - cannot add/drop multicast group");
+            }
+
+            return;
+        }
+    }
+
 #pragma endregion
 
 #pragma region UDP Area
 
     UDP_Client::UDP_Client(const char* address, uint16_t port)
         : ClientSocket(address, port, e_socktype::DGRAM)
+    {}
+
+    UDP_Client::UDP_Client(uint16_t port)
+        : ClientSocket(nullptr, port, e_socktype::DGRAM)
     {}
 
     ssize_t UDP_Client::send(const char* data, const size_t len) const
@@ -117,6 +218,105 @@ namespace Socket {
 
         return res;
     }
+
+    void UDP_Client::enable_broadcast_ipv4(bool enable)
+    {
+        if (!m_sock || get_family() != e_family::IPV4)
+            throw socket_exception("Broadcast error - invalid setup: not IPV4 only or empty socket");
+
+        enable_broadcast_on(m_sock->sock, enable);
+    }
+    
+    void UDP_Client::join_multicast(uint16_t gid, multicast_scope scope, bool join, int ttl)
+    {
+        const auto current_family = get_family();
+
+        if (!m_sock || current_family == e_family::UNSPEC || m_sock->type != e_socktype::DGRAM)
+            throw socket_exception("Multicast error - you cannot enable multicast on dual (UNSPEC) or non DGRAM socket.");
+
+        join_multicast_on(m_sock->sock, current_family, gid, scope, join, ttl);
+    }
+    
+    
+    UDP_Broadcaster::UDP_Broadcaster(uint16_t port, uint16_t group, e_family family, multicast_scope scope, int ttl)
+        : HostSocket(port, family, e_socktype::DGRAM), m_gid(group), m_scope(scope), is_broadcast(false)
+    {
+        if (family == e_family::UNSPEC) {
+            m_sock.reset();
+            throw socket_exception("Invalid configuration on UDP_Broadcaster - family must be defined: IPV4 or IPV6, not UNSPEC!");
+        }
+
+        join_multicast_on(m_sock->sock, family, group, scope, true, ttl);
+    }
+
+    UDP_Broadcaster::UDP_Broadcaster(uint16_t port)
+        : HostSocket(port, e_family::IPV4, e_socktype::DGRAM), is_broadcast(true)
+    {
+        enable_broadcast_on(m_sock->sock, true);
+    }
+
+    ssize_t UDP_Broadcaster::send(const char* data, const size_t len) const
+    {
+        if (is_broadcast) {
+            const auto current_cfg = get_config();
+
+            sockaddr_in addr{};
+            addr.sin_family = AF_INET;
+            addr.sin_port   = htons(current_cfg.port);
+            addr.sin_addr.s_addr = htonl(INADDR_BROADCAST);
+
+            return ::sendto(
+                m_sock->sock,
+                data,
+                len,
+                0,
+                reinterpret_cast<sockaddr*>(&addr),
+                sizeof(addr)
+            );
+        }
+        else {
+            const auto current_family = get_family();
+            const auto current_cfg = get_config();
+
+            if (!m_sock || current_family == e_family::UNSPEC || m_sock->type != e_socktype::DGRAM)
+                return -1;
+
+            if (current_family == e_family::IPV4) {
+                sockaddr_in addr{};
+                addr.sin_family = AF_INET;
+                addr.sin_port   = htons(current_cfg.port);
+                addr.sin_addr   = make_v4_multicast(m_gid);
+
+                return ::sendto(
+                    m_sock->sock,
+                    data,
+                    len,
+                    0,
+                    reinterpret_cast<sockaddr*>(&addr),
+                    sizeof(addr)
+                );
+            }
+            
+            if (current_family == e_family::IPV6) {
+                sockaddr_in6 addr{};
+                addr.sin6_family = AF_INET6;
+                addr.sin6_port   = htons(current_cfg.port);
+                addr.sin6_addr   = make_v6_multicast(m_scope, m_gid);
+
+                return ::sendto(
+                    m_sock->sock,
+                    data,
+                    len,
+                    0,
+                    reinterpret_cast<sockaddr*>(&addr),
+                    sizeof(addr)
+                );
+            }
+        }
+
+        return -1;
+    }
+
 
     ssize_t UDP_Host::UDP_Connection::send(const char* data, const size_t len) const
     {
@@ -150,7 +350,7 @@ namespace Socket {
     {}
 
     UDP_Host::UDP_Host(uint16_t port, e_family family)
-        : HostSocket(port, family, e_socktype::DGRAM), 
+        : HostSocket(port, family, e_socktype::DGRAM),
           m_async_recv([this]{ async_recv(); })
     {
     }
@@ -193,167 +393,17 @@ namespace Socket {
         if (!m_sock || get_family() != e_family::IPV4)
             throw socket_exception("Broadcast error - invalid setup: not IPV4 only or empty socket");
 
-        int yes = enable ? 1 : 0;
-        if (::setsockopt(m_sock->sock, SOL_SOCKET, SO_BROADCAST, &yes, sizeof(yes)) != 0) {
-            throw socket_exception("Broadcast error - cannot toggle broadcast");
-        }
-
-        yes = 1;
-        if (::setsockopt(m_sock->sock, IPPROTO_IP, IP_PKTINFO, &yes, sizeof(yes)) != 0) {
-            throw socket_exception("Broadcast error - cannot set packet info");
-        }
+        enable_broadcast_on(m_sock->sock, enable);
     }
     
     void UDP_Host::join_multicast(uint16_t gid, multicast_scope scope, bool join, int ttl)
     {
-        if (gid == 0) {
-            throw socket_exception("Multicast error - invalid group id. It cannot be zero.");
-        }
-
-        if (ttl <= 0) ttl = 1;
-        if (ttl > 255) ttl = 255;
-
         const auto current_family = get_family();
 
         if (!m_sock || current_family == e_family::UNSPEC || m_sock->type != e_socktype::DGRAM)
             throw socket_exception("Multicast error - you cannot enable multicast on dual (UNSPEC) or non DGRAM socket.");
 
-        if (current_family == e_family::IPV4) {
-            if (scope != multicast_scope::link_local)
-                throw socket_exception("Multicast error - IPV4 only supports LINK_LOCAL as option for multicast scope.");
-
-            ip_mreq mreq{};
-            mreq.imr_interface.s_addr = INADDR_ANY;
-
-            switch (gid) {
-                case multicast_group_mdns:
-                    inet_pton(AF_INET, "224.0.0.251", &mreq.imr_multiaddr);
-                    break;
-                default:
-                    mreq.imr_multiaddr = make_v4_multicast(gid);
-                    break;
-            }
-            {
-                int on = 1;
-                if (::setsockopt(m_sock->sock, IPPROTO_IP, IP_PKTINFO, &on, sizeof(on)) != 0) {
-                    throw socket_exception("Multicast error - cannot enable packet info");
-                }
-            }
-            if (::setsockopt(m_sock->sock, IPPROTO_IP, IP_MULTICAST_TTL, &ttl, sizeof(ttl)) != 0) {
-                throw socket_exception("Multicast error - cannot set TTL");
-            }
-
-            int opt = join ? IP_ADD_MEMBERSHIP : IP_DROP_MEMBERSHIP;
-            if (::setsockopt(
-                m_sock->sock,
-                IPPROTO_IP,
-                opt,
-                &mreq,
-                sizeof(mreq)
-            ) != 0) {
-                throw socket_exception("Multicast error - cannot add/drop multicast membership");
-            }
-
-            return;
-        }
-
-        if (current_family == e_family::IPV6) {
-            ipv6_mreq mreq{};
-            // safe zone: ff02::[0x1000..0x7fff]. Technically safe from 0x0001..0x7fff
-            mreq.ipv6mr_multiaddr = make_v6_multicast(scope, gid);
-            mreq.ipv6mr_interface = 0; // let the kernel decide
-
-            {
-                int on = 1;
-                if (::setsockopt(m_sock->sock, IPPROTO_IPV6, IPV6_RECVPKTINFO, &on, sizeof(on)) != 0) {
-                    throw socket_exception("Multicast error - cannot enable packet info");
-                }
-            }
-            
-            if (::setsockopt(m_sock->sock, IPPROTO_IPV6, IPV6_MULTICAST_HOPS, &ttl, sizeof(ttl)) != 0) {
-                throw socket_exception("Multicast error - cannot set TTL");
-            }
-
-            int opt = join ? IPV6_JOIN_GROUP : IPV6_LEAVE_GROUP;
-            if (::setsockopt(
-                m_sock->sock,
-                IPPROTO_IPV6,
-                opt,
-                &mreq,
-                sizeof(mreq)
-            ) != 0) {
-                throw socket_exception("Multicast error - cannot add/drop multicast group");
-            }
-
-            return;
-        }
-    }
-
-    ssize_t UDP_Host::send_broadcast(const char* data, size_t len)
-    {
-        if (!m_sock || get_family() != e_family::IPV4)
-            return -1;
-
-        const auto current_cfg = get_config();
-
-        sockaddr_in addr{};
-        addr.sin_family = AF_INET;
-        addr.sin_port   = htons(current_cfg.port);
-        addr.sin_addr.s_addr = htonl(INADDR_BROADCAST);
-
-        return ::sendto(
-            m_sock->sock,
-            data,
-            len,
-            0,
-            reinterpret_cast<sockaddr*>(&addr),
-            sizeof(addr)
-        );
-    }
-
-    ssize_t UDP_Host::send_multicast(const char* data, size_t len, uint16_t gid, multicast_scope scope)
-    {
-        if (gid == 0) return -1; // not allowed
-
-        const auto current_family = get_family();
-        const auto current_cfg = get_config();
-
-        if (!m_sock || current_family == e_family::UNSPEC || m_sock->type != e_socktype::DGRAM)
-            return -1;
-
-        if (current_family == e_family::IPV4) {
-            sockaddr_in addr{};
-            addr.sin_family = AF_INET;
-            addr.sin_port   = htons(current_cfg.port);
-            addr.sin_addr   = make_v4_multicast(gid);
-
-            return ::sendto(
-                m_sock->sock,
-                data,
-                len,
-                0,
-                reinterpret_cast<sockaddr*>(&addr),
-                sizeof(addr)
-            );
-        }
-        
-        if (current_family == e_family::IPV6) {
-            sockaddr_in6 addr{};
-            addr.sin6_family = AF_INET6;
-            addr.sin6_port   = htons(current_cfg.port);
-            addr.sin6_addr   = make_v6_multicast(scope, gid);
-
-            return ::sendto(
-                m_sock->sock,
-                data,
-                len,
-                0,
-                reinterpret_cast<sockaddr*>(&addr),
-                sizeof(addr)
-            );
-        }
-
-        return -1;
+        join_multicast_on(m_sock->sock, current_family, gid, scope, join, ttl);
     }
 
     void UDP_Host::async_recv()

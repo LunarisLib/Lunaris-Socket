@@ -7,7 +7,7 @@ namespace Socket {
 
     class TCP_Host;
 
-    class TCP_Client : public Base::ClientSocket {
+    class TCP_Client : protected Base::ClientSocket {
     public:
         TCP_Client(const char* address, uint16_t port);
         ~TCP_Client() override = default;
@@ -20,18 +20,24 @@ namespace Socket {
 
         // in buffer to recv right now
         size_t recv_size() const;
+
+        using Base::BaseSocket::valid;
+        using Base::BaseSocket::operator bool;
     private:
         using Base::ClientSocket::ClientSocket;
 
         friend class TCP_Host;
     };
 
-    class TCP_Host : public Base::HostSocket {
+    class TCP_Host : protected Base::HostSocket {
     public:
         TCP_Host(uint16_t port, e_family family = e_family::UNSPEC);
         ~TCP_Host() override = default;
 
         TCP_Client accept() const;
+
+        using Base::BaseSocket::valid;
+        using Base::BaseSocket::operator bool;
     };
 
 } // namespace Socket

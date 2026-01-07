@@ -13,28 +13,57 @@
 namespace Lunaris {
 namespace Socket {
 
-    class UDP_Client : public Base::ClientSocket {
+    enum class multicast_scope : uint8_t {
+        interface_local = 0x1,
+        link_local      = 0x2,
+        site_local      = 0x5,
+        global          = 0xE,
+    };
+
+    class UDP_Client : protected Base::ClientSocket {
     public:
         UDP_Client(const char* address, uint16_t port);
+        UDP_Client(uint16_t port);
         ~UDP_Client() override = default;
         
         ssize_t send(const char*, const size_t) const;
         ssize_t recv(char*, const size_t) const;
+
+        void enable_broadcast_ipv4(bool enable);
+
+        // ttl = time to live, how far it goes. 1 is the smallest, local. 255 is the maximum value.
+        void join_multicast(uint16_t group, multicast_scope scope = multicast_scope::link_local, bool join = true, int ttl = 1);
+
+        /*ssize_t send_broadcast(const char* data, size_t len);
+        ssize_t send_multicast(const char* data, size_t len, uint16_t group, multicast_scope scope = multicast_scope::link_local);*/
+
+        using Base::BaseSocket::valid;
+        using Base::BaseSocket::operator bool;
     private:
         using Base::ClientSocket::ClientSocket;
 
         friend class TCP_Host;
     };
 
-    class UDP_Host : public Base::HostSocket {
-    public:        
-        enum class multicast_scope : uint8_t {
-            interface_local = 0x1,
-            link_local      = 0x2,
-            site_local      = 0x5,
-            global          = 0xE,
-        };
+    class UDP_Broadcaster : protected Base::HostSocket { // It may be a good idea for this to be child of UDP_Host to be able to accept whoever responds.
+    public:
+        // multicast mode
+        UDP_Broadcaster(uint16_t port, uint16_t group, e_family family, multicast_scope scope = multicast_scope::link_local, int ttl = 1);
+        // broadcast mode
+        UDP_Broadcaster(uint16_t port);
 
+        ssize_t send(const char*, const size_t) const;
+
+        using Base::BaseSocket::valid;
+        using Base::BaseSocket::operator bool;
+    private:
+        const uint16_t m_gid = 0;
+        const multicast_scope m_scope = multicast_scope::link_local;
+        const bool is_broadcast;
+    };
+
+    class UDP_Host : protected Base::HostSocket {
+    public:
         struct package {
             enum class type : uint8_t { none, broadcast, multicast };
 
@@ -64,8 +93,6 @@ namespace Socket {
             std::deque<package> m_dgrams;
         };
 
-        static constexpr uint16_t multicast_group_mdns = 0x00fb;
-
         UDP_Host(uint16_t port, e_family family = e_family::UNSPEC);
         ~UDP_Host() override;
 
@@ -78,11 +105,10 @@ namespace Socket {
 
         // ttl = time to live, how far it goes. 1 is the smallest, local. 255 is the maximum value.
         void join_multicast(uint16_t group, multicast_scope scope = multicast_scope::link_local, bool join = true, int ttl = 1);
-
-        ssize_t send_broadcast(const char* data, size_t len);
-        ssize_t send_multicast(const char* data, size_t len, uint16_t group, multicast_scope scope = multicast_scope::link_local);
-
-    private:    
+        
+        using Base::BaseSocket::valid;
+        using Base::BaseSocket::operator bool;
+    protected:
         void async_recv();
 
         void clear_weak_conns();

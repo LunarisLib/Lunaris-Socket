@@ -33,6 +33,7 @@ int main() {
 
     std::print("accept>");
     TCP_Client hst = host.accept();
+    if (!hst) throw std::runtime_error("Accept resulted in invalid client.");
 
     std::print("send_all_cli>");
     for(auto& i : blocks) if (!send_and_check_auto(cli, i)) throw std::runtime_error("Failed to send from client once! String: '" + i + "'");
@@ -46,5 +47,5 @@ int main() {
     std::print("recv_all_cli>");
     for(auto& i : blocks) if (!recv_tcp_and_check_auto(cli, i)) throw std::runtime_error("Failed on recv of string '" + i + "'.");
 
-    std::println("\n=== > PASSED! < ===", sel_path, sel_port);
+    std::println("\n=== > PASSED! < ===");
 }

@@ -37,6 +37,7 @@ e_family _get_family_from_ip_addr(const char* ip)
     {
         return m_sock && platform::is_socket_valid(m_sock->sock);
     }
+    
     BaseSocket::operator bool() const
     {
         return m_sock && platform::is_socket_valid(m_sock->sock);

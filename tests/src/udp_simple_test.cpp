@@ -38,6 +38,8 @@ int main() {
 
     std::print("accept>");
     auto hst_ptr = host.accept();
+    if (!hst_ptr) throw std::runtime_error("Accept resulted in nullptr.");
+    
     auto& hst = *hst_ptr;
 
     std::print("check_hello>");
@@ -55,5 +57,5 @@ int main() {
     std::print("recv_all_cli>");
     for(auto& i : blocks) if (!recv_udp_and_check_auto(cli, i)) throw std::runtime_error("Failed on recv of string '" + i + "'.");
 
-    std::println("\n=== > PASSED! < ===", sel_path, sel_port);
+    std::println("\n=== > PASSED! < ===");
 }
