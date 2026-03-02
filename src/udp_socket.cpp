@@ -1,5 +1,17 @@
+#ifdef _WIN32
+#define WIN32_LEAN_AND_MEAN
+#include <winsock2.h>
+#include <windows.h>
+#include <ws2tcpip.h>
+#include <mstcpip.h>
+#include <mswsock.h>
+#undef min
+#undef max
+#else
 #include <sys/ioctl.h>
 #include <arpa/inet.h>
+#endif
+
 #include <string.h>
 #include <functional>
 
@@ -34,7 +46,7 @@ namespace Socket {
         return addr;
     };
 
-    constexpr in_addr make_v4_multicast(uint16_t group)
+    static in_addr make_v4_multicast(uint16_t group)
     {
         in_addr addr{};
         char format[16];
@@ -43,14 +55,14 @@ namespace Socket {
         return addr;
     };
 
-    constexpr void extract_scope_and_group_from_msghdr(msghdr& msg, UDP_Host::package& pkg) {
+    constexpr void extract_scope_and_group_from_msghdr(message& msg, UDP_Host::package& pkg) {
         for (cmsghdr* cmsg = CMSG_FIRSTHDR(&msg); cmsg; cmsg = CMSG_NXTHDR(&msg, cmsg))
         {
             if (cmsg->cmsg_level == IPPROTO_IPV6 &&
                 cmsg->cmsg_type  == IPV6_PKTINFO)
             {
                 auto* iinfo =
-                    reinterpret_cast<const in6_pktinfo*>(CMSG_DATA(cmsg));
+                    reinterpret_cast<const in6_pktinfo*>(const_message_data(cmsg));
 
                 const in6_addr& dst = iinfo->ipi6_addr;
 
@@ -70,7 +82,7 @@ namespace Socket {
                 cmsg->cmsg_type  == IP_PKTINFO)
             {
                 auto* iinfo =
-                    reinterpret_cast<const in_pktinfo*>(CMSG_DATA(cmsg));
+                    reinterpret_cast<const in_pktinfo*>(const_message_data(cmsg));
 
                 uint32_t dst = ntohl(iinfo->ipi_addr.s_addr);
 
@@ -94,14 +106,12 @@ namespace Socket {
         }
     };
 
-    constexpr void enable_broadcast_on(socket_t sock, bool enable) {
-        int yes = enable ? 1 : 0;
-        if (::setsockopt(sock, SOL_SOCKET, SO_BROADCAST, &yes, sizeof(yes)) != 0) {
+    static void enable_broadcast_on(socket_t sock, bool enable) {
+        if (platform::set_socket_opt(sock, SOL_SOCKET, SO_BROADCAST, enable ? 1 : 0) != 0) {
             throw socket_exception("Broadcast error - cannot toggle broadcast");
         }
 
-        yes = 1;
-        if (::setsockopt(sock, IPPROTO_IP, IP_PKTINFO, &yes, sizeof(yes)) != 0) {
+        if (platform::set_socket_opt(sock, IPPROTO_IP, IP_PKTINFO, enable ? 1 : 0) != 0) {
             throw socket_exception("Broadcast error - cannot set packet info");
         }
     }
@@ -133,18 +143,15 @@ namespace Socket {
                     mreq.imr_multiaddr = make_v4_multicast(gid);
                     break;
             }
-            {
-                int on = 1;
-                if (::setsockopt(sock, IPPROTO_IP, IP_PKTINFO, &on, sizeof(on)) != 0) {
-                    throw socket_exception("Multicast error - cannot enable packet info");
-                }
+            if (platform::set_socket_opt(sock, IPPROTO_IP, IP_PKTINFO, 1) != 0) {
+                throw socket_exception("Multicast error - cannot enable packet info");
             }
-            if (::setsockopt(sock, IPPROTO_IP, IP_MULTICAST_TTL, &ttl, sizeof(ttl)) != 0) {
+            if (platform::set_socket_opt(sock, IPPROTO_IP, IP_MULTICAST_TTL, ttl) != 0) {
                 throw socket_exception("Multicast error - cannot set TTL");
             }
 
             int opt = join ? IP_ADD_MEMBERSHIP : IP_DROP_MEMBERSHIP;
-            if (::setsockopt(
+            if (platform::set_socket_opt(
                 sock,
                 IPPROTO_IP,
                 opt,
@@ -163,19 +170,16 @@ namespace Socket {
             mreq.ipv6mr_multiaddr = make_v6_multicast(scope, gid);
             mreq.ipv6mr_interface = 0; // let the kernel decide
 
-            {
-                int on = 1;
-                if (::setsockopt(sock, IPPROTO_IPV6, IPV6_RECVPKTINFO, &on, sizeof(on)) != 0) {
-                    throw socket_exception("Multicast error - cannot enable packet info");
-                }
+            if (platform::set_socket_opt(sock, IPPROTO_IPV6, IPV6_RECV_PKT_INFO, 1) != 0) {
+                throw socket_exception("Multicast error - cannot enable packet info");
             }
             
-            if (::setsockopt(sock, IPPROTO_IPV6, IPV6_MULTICAST_HOPS, &ttl, sizeof(ttl)) != 0) {
+            if (platform::set_socket_opt(sock, IPPROTO_IPV6, IPV6_MULTICAST_HOPS, ttl) != 0) {
                 throw socket_exception("Multicast error - cannot set TTL");
             }
 
             int opt = join ? IPV6_JOIN_GROUP : IPV6_LEAVE_GROUP;
-            if (::setsockopt(
+            if (platform::set_socket_opt(
                 sock,
                 IPPROTO_IPV6,
                 opt,
@@ -433,6 +437,12 @@ namespace Socket {
             _lunaris_socket_debug_c("UDP_HOST MALFORMED START, EMPTY SOCK. DROP.");
             return;
         }
+#ifdef _WIN32
+        if (!m_sock->wsarecvmsg_fn) { // Specific windows stuff
+            _lunaris_socket_debug_c("UDP_HOST MALFORMED START, NO RECVMSG DEFINED. DROP.");
+            return;
+        }
+#endif
 
         bool flag_had_expired_ptr = false;
 
@@ -463,21 +473,58 @@ namespace Socket {
                 .buffer_len = static_cast<size_t>(buf_next)
             };
             
-            iovec iov{};
+            io_buf iov{};
+#ifdef _WIN32
+            iov.buf = pkg.buffer.get();
+            iov.len = static_cast<ULONG>(buf_next);
+#else
             iov.iov_base = pkg.buffer.get();
-            iov.iov_len  = buf_next;
+            iov.iov_len = buf_next;
+#endif
 
-            char cmsgbuf[CMSG_SPACE(sizeof(in6_pktinfo)) + CMSG_SPACE(sizeof(in_pktinfo))];
+            char cmsgbuf[
+                CMSG_SPACE(sizeof(in6_pktinfo)) +
+                CMSG_SPACE(sizeof(in_pktinfo))];
 
-            msghdr msg{};
-            msg.msg_name       = &info->storage;
-            msg.msg_namelen    = info->storage_len;
-            msg.msg_iov        = &iov;
-            msg.msg_iovlen     = 1;
-            msg.msg_control    = cmsgbuf;
+            message msg{};
+
+#ifdef _WIN32
+            msg.name = (addr_t*)&info->storage;
+            msg.namelen = info->storage_len;
+            msg.lpBuffers = &iov;
+            msg.dwBufferCount = 1;
+            msg.Control.buf = cmsgbuf;
+            msg.Control.len = sizeof(cmsgbuf);
+            msg.dwFlags = 0;
+#else
+            msg.msg_name = &info->storage;
+            msg.msg_namelen = info->storage_len;
+            msg.msg_iov = &iov;
+            msg.msg_iovlen = 1;
+            msg.msg_control = cmsgbuf;
             msg.msg_controllen = sizeof(cmsgbuf);
+#endif
 
+#ifdef _WIN32
+            DWORD bytes_recv = 0;
+            DWORD flags = 0;
+
+            int result = info->wsarecvmsg_fn(
+                info->sock,
+                &msg,
+                &bytes_recv,
+                nullptr,
+                nullptr
+            );
+
+            if (result == SOCKET_ERROR)
+                pkg.recvd = -1;
+            else
+                pkg.recvd = static_cast<int>(bytes_recv);
+
+#else
             pkg.recvd = ::recvmsg(info->sock, &msg, 0);
+#endif
 
             if (pkg.recvd < 1) {
                 _lunaris_socket_debug_c("UDP_HOST DROPPED PACKAGE, FAILED");

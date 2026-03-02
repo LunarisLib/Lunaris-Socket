@@ -1,7 +1,15 @@
 #pragma once
 
+#ifdef _WIN32
+#define WIN32_LEAN_AND_MEAN
+#include <winsock2.h>
+#include <windows.h>
+#include <ws2tcpip.h>
+#include <mswsock.h>
+#else
 #include <sys/socket.h>
 #include <netinet/in.h>
+#endif
 
 #include <memory>
 #include <string>
@@ -58,8 +66,14 @@ namespace Socket {
                 e_socktype type;
                 addr_storage_t storage = {};
                 socklen_t storage_len = 0;
+#ifdef _WIN32
+                LPFN_WSARECVMSG wsarecvmsg_fn;
+#endif
 
                 sock_info(socket_t, e_socktype, addr_storage_t*, socklen_t);
+#ifdef _WIN32
+                sock_info(socket_t, e_socktype, addr_storage_t*, socklen_t, LPFN_WSARECVMSG);
+#endif
                 ~sock_info();
 
                 std::unique_ptr<sock_info> make_ref() const;

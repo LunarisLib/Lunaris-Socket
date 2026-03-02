@@ -11,9 +11,9 @@ namespace Socket {
     template <typename... Args>
     inline void __lunaris_socket_debug(
         void* self,
-        std::format_string<Args...> fmt,
+        std::string_view fmt,
         const std::source_location& loc,
-        Args&&... args        
+        Args&&... args
     ) {
 #ifdef LUNARIS_DEBUG
         static std::mutex mtx;
@@ -42,17 +42,27 @@ namespace Socket {
         }
 
         std::unique_lock<std::mutex> m(mtx);
-        std::printf("\n{#%08X}[%s%*s<>%04u]|@ %s%*s $ ",
+        std::printf("\n{#%08zX}[%s%*s<>%04u]|@ %s%*s $ ",
             (size_t)self,
             filename_len > max_len ? "..." : "",
-            max_len - (filename_cut ? 3 : 0), 
+            static_cast<int>(max_len - (filename_cut ? 3 : 0)), 
             filename,
             loc.line(),
             funname_len > max_fcn_len ? "..." : "",
-            max_fcn_len - (funname_cut ? 3 : 0), 
+            static_cast<int>(max_fcn_len - (funname_cut ? 3 : 0)), 
             funname
         );
-        std::println(fmt, std::forward<Args>(args)...);
+
+        auto tuple = std::forward_as_tuple(std::forward<Args>(args)...);
+
+        std::string msg = std::apply(
+            [&](auto&... unpacked) {
+                return std::vformat(fmt, std::make_format_args(unpacked...));
+            },
+            tuple
+        );
+
+        std::println("{}", msg);
 #endif
     }
 

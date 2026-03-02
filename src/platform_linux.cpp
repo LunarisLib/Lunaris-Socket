@@ -28,16 +28,27 @@ namespace Socket {
             return ::poll(pollfd, poll_t_size, timeout_ms);
         }
 
+        int get_socket_opt(socket_t sock, int level, int opt, int& store)
+        {
+            socklen_t len = sizeof(store);
+            return ::getsockopt(sock, level, opt, (void*)&store, &len);
+        }
+
+        int set_socket_opt(socket_t sock, int level, int opt, int val)
+        {
+            return ::setsockopt(sock, level, opt, &val, sizeof(val));
+        }
+
+        int set_socket_opt(socket_t sock, int level, int opt, void* val, int len)
+        {
+            return ::setsockopt(sock, level, opt, val, len);
+        }
+
         socket_t get_invalid_socket()
         {
             return -1;
         }
-
-        int get_socket_protocol_info_num()
-        {
-            return SO_PROTOCOL;
-        }
-        
+                
         bool is_socket_valid(socket_t sock)
         {
             return sock != -1;

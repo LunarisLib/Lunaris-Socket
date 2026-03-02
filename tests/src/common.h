@@ -3,11 +3,12 @@
 #include <string>
 #include <random>
 #include <string.h>
+#include <string>
 
 inline std::string generate_random_string(size_t size)
 {
-    constexpr char characters[] = "0123456789abcdefhijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ-=+-*/@!~\\/$% ";
-    constexpr size_t characters_len = strlen(characters);
+    constexpr std::string_view characters = "0123456789abcdefhijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ-=+-*/@!~\\/$% ";
+    constexpr size_t characters_len = characters.length();
 
     std::string str(size, '\0');
     std::random_device rd; 

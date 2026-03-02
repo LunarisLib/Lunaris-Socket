@@ -1,4 +1,13 @@
+#ifdef _WIN32
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+#include <winsock2.h>
+#include <ws2tcpip.h>
+#include <mstcpip.h>
+#else
 #include <arpa/inet.h>
+#endif
+
 #include <string.h>
 
 #include <Lunaris/socket.h>
@@ -47,8 +56,7 @@ e_family _get_family_from_ip_addr(const char* ip)
     int BaseSocket::getopt(int level, int opt, int& res) const
     {
         if (!m_sock) return -1;
-        socklen_t len = sizeof(res);
-        return ::getsockopt(m_sock->sock, SOL_SOCKET, SO_PROTOCOL, &res, &len);
+        return platform::get_socket_opt(m_sock->sock, level, opt, res);
     }
 
     e_socktype BaseSocket::get_type() const
@@ -84,7 +92,7 @@ e_family _get_family_from_ip_addr(const char* ip)
             ? (void*)(&(((struct sockaddr_in*)sa)->sin_addr))
             : (void*)(&(((struct sockaddr_in6*)sa)->sin6_addr));
 
-        const in_port_t port = (family == AF_INET)
+        const uint16_t port = (family == AF_INET)
             ? (((struct sockaddr_in*)sa)->sin_port)
             : (((struct sockaddr_in6*)sa)->sin6_port);
         
@@ -112,8 +120,39 @@ e_family _get_family_from_ip_addr(const char* ip)
     {
         ::memset(&storage, 0, sizeof(storage));
         ::memcpy(&storage, addr, storage_len);
+#ifdef _WIN32
+        GUID guid = WSAID_WSARECVMSG;
+        LPFN_WSARECVMSG fn = nullptr;
+        DWORD bytes = 0;
+
+        if (WSAIoctl(s,
+            SIO_GET_EXTENSION_FUNCTION_POINTER,
+            &guid,
+            sizeof(guid),
+            &fn,
+            sizeof(fn),
+            &bytes,
+            nullptr,
+            nullptr) != SOCKET_ERROR)
+        {
+            this->wsarecvmsg_fn = fn;
+        }
+        else {
+            this->wsarecvmsg_fn = nullptr;
+        }
+#endif
         _lunaris_socket_debug_c("sock_info: new sock_info, sock={:08X} type={}", (uint64_t)s, (uint64_t)type);
     }
+
+#ifdef _WIN32
+    BaseSocket::sock_info::sock_info(socket_t s, e_socktype type, addr_storage_t* addr, socklen_t len, LPFN_WSARECVMSG fn)
+        : sock(s), type(type), storage({}), storage_len(static_cast<socklen_t>(len)), owns_socket(true), wsarecvmsg_fn(fn)
+    {
+        ::memset(&storage, 0, sizeof(storage));
+        ::memcpy(&storage, addr, storage_len);
+        _lunaris_socket_debug_c("sock_info: new sock_info, sock={:08X} type={}", (uint64_t)s, (uint64_t)type);
+    }
+#endif
 
     BaseSocket::sock_info::~sock_info()
     {
@@ -128,7 +167,11 @@ e_family _get_family_from_ip_addr(const char* ip)
     std::unique_ptr<BaseSocket::sock_info> BaseSocket::sock_info::make_ref() const
     {
         _lunaris_socket_debug_c("sock_info: referencing sock_info, sock={:08X}", (uint64_t)sock);
+#ifdef _WIN32
+        auto cpy = std::make_unique<sock_info>(sock, type, (addr_storage_t*)&storage, storage_len, wsarecvmsg_fn);
+#else
         auto cpy = std::make_unique<sock_info>(sock, type, (addr_storage_t*)&storage, storage_len);
+#endif
         cpy->owns_socket = false;
         return cpy;
     }
@@ -166,7 +209,7 @@ e_family _get_family_from_ip_addr(const char* ip)
             socket_t s = ::socket(AI->ai_family, AI->ai_socktype, AI->ai_protocol);
             if (!platform::is_socket_valid(s)) continue;
 
-            auto dev = std::make_unique<sock_info>(s, type, (addr_storage_t*)AI->ai_addr, AI->ai_addrlen);
+            auto dev = std::make_unique<sock_info>(s, type, (addr_storage_t*)AI->ai_addr, static_cast<socklen_t>(AI->ai_addrlen));
 
             if (type == e_socktype::STREAM) {
                 if (platform::is_socket_error(::connect(dev->sock, AI->ai_addr, AI->ai_addrlen))) {
@@ -206,39 +249,36 @@ e_family _get_family_from_ip_addr(const char* ip)
         if (!platform::is_socket_valid(s))
             throw socket_exception("Could not instantiate host socket - failed to create socket");
 
-        void* any_addr = using_v6 ? (void*)new sockaddr_in6() : (void*)new sockaddr_in();
+        //void* any_addr = using_v6 ? (void*)new sockaddr_in6() : (void*)new sockaddr_in();
+        addr_storage_t any_addr{};
         const size_t any_addr_len = using_v6 ? sizeof(sockaddr_in6) : sizeof(sockaddr_in);
 
         if (using_v6) {
-            sockaddr_in6& addr = *(sockaddr_in6*)any_addr;
+            auto& addr = reinterpret_cast<sockaddr_in6&>(any_addr);
             addr.sin6_family = AF_INET6;
             addr.sin6_port   = htons(port);
             addr.sin6_addr   = in6addr_any;
         }
         else {
-            sockaddr_in& addr = *(sockaddr_in*)any_addr;
+            auto& addr = reinterpret_cast<sockaddr_in&>(any_addr);
             addr.sin_family      = AF_INET;
             addr.sin_port        = htons(port);
             addr.sin_addr.s_addr = INADDR_ANY;
         }
 
-        auto dev = std::make_unique<sock_info>(s, type, (addr_storage_t*)any_addr, any_addr_len);
+        auto dev = std::make_unique<sock_info>(s, type, (addr_storage_t*)&any_addr, static_cast<socklen_t>(any_addr_len));
 
         if (family == e_family::UNSPEC) {
-            int off = 0;
-            if (::setsockopt(dev->sock, IPPROTO_IPV6, IPV6_V6ONLY, &off, sizeof(off)) != 0) {
+            if (platform::set_socket_opt(dev->sock, IPPROTO_IPV6, IPV6_V6ONLY, 0) != 0) {
                 throw socket_exception("Could not instantiate host socket - failed to enable dual stack"); // implicit close socket on dev
             }
         }
 
-        {
-            int reuse = 1;
-            if (::setsockopt(dev->sock, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse)) != 0) {
-                throw socket_exception("Could not instantiate host socket - failed to enable reuse addr"); // implicit close socket on dev                    
-            }
+        if (platform::set_socket_opt(dev->sock, SOL_SOCKET, SO_REUSEADDR_AUTO, 1) != 0) {
+            throw socket_exception("Could not instantiate host socket - failed to enable reuse addr"); // implicit close socket on dev                    
         }
 
-        if (::bind(dev->sock, (addr_t*)any_addr, any_addr_len) != 0) {
+        if (::bind(dev->sock, (addr_t*)&any_addr, any_addr_len) != 0) {
             throw socket_exception("Could not instantiate host socket - failed to bind to desired config"); // implicit close socket on dev
         }
 
@@ -250,40 +290,6 @@ e_family _get_family_from_ip_addr(const char* ip)
 
         m_sock = std::move(dev);
     }
-
-    /*ClientSocket HostSocket::accept() const
-    {
-        addr_storage_t storage = {};
-        socklen_t storage_len = sizeof(addr_storage_t);
-
-        if (m_sock->type == e_socktype::STREAM) {
-            auto s = ::accept(m_sock->sock, (addr_t*)&storage, &storage_len);
-
-            if (!platform::is_socket_valid(s))
-                throw socket_exception("Could not instantiate accepted socket - failed to create socket");
-
-            auto info = std::make_unique<sock_info>(s, m_sock->type, storage, storage_len);
-
-            return ClientSocket{ std::move(info) };
-        }
-        else {
-            auto info = m_sock->make_ref();
-            char dummy;
-
-            if (::recvfrom( /// HMM ACTUALLY THIS WON'T WORK AS WE EXPECT IT TO WORK... It does not keep the reference, so... recv() on client won't do
-                info->sock,
-                &dummy,
-                1,
-                MSG_PEEK,
-                (addr_t*)&info->storage,
-                &info->storage_len
-            ) < 1) {
-                throw socket_exception("Could not instantiate accepted socket - recvfrom did not work correctly");
-            }
-
-            return ClientSocket{ std::move(info) };
-        }
-    }*/
 
 #pragma endregion
 
