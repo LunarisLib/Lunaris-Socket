@@ -26,16 +26,16 @@ namespace Socket {
         UDP_Client(uint16_t port);
         ~UDP_Client() override = default;
         
-        ssize_t send(const char*, const size_t) const;
-        ssize_t recv(char*, const size_t) const;
+        ptrdiff_t send(const char*, const size_t) const;
+        ptrdiff_t recv(char*, const size_t) const;
 
         void enable_broadcast_ipv4(bool enable);
 
         // ttl = time to live, how far it goes. 1 is the smallest, local. 255 is the maximum value.
         void join_multicast(uint16_t group, multicast_scope scope = multicast_scope::link_local, bool join = true, int ttl = 1);
 
-        /*ssize_t send_broadcast(const char* data, size_t len);
-        ssize_t send_multicast(const char* data, size_t len, uint16_t group, multicast_scope scope = multicast_scope::link_local);*/
+        /*ptrdiff_t send_broadcast(const char* data, size_t len);
+        ptrdiff_t send_multicast(const char* data, size_t len, uint16_t group, multicast_scope scope = multicast_scope::link_local);*/
 
         using Base::BaseSocket::valid;
         using Base::BaseSocket::operator bool;
@@ -56,7 +56,7 @@ namespace Socket {
         // broadcast mode
         UDP_Broadcaster(uint16_t port);
 
-        ssize_t send(const char*, const size_t) const;
+        ptrdiff_t send(const char*, const size_t) const;
 
         using Base::BaseSocket::valid;
         using Base::BaseSocket::operator bool;
@@ -77,7 +77,7 @@ namespace Socket {
 
             std::unique_ptr<char[]> buffer;
             size_t buffer_len;
-            ssize_t recvd;
+            ptrdiff_t recvd;
             // only filled if applicable
             uint16_t mc_group;
             multicast_scope mc_scope;
@@ -86,8 +86,8 @@ namespace Socket {
 
         class UDP_Connection : protected Base::ClientSocket {
         public:
-            ssize_t send(const char*, const size_t) const;
-            ssize_t recv(char*, const size_t);
+            ptrdiff_t send(const char*, const size_t) const;
+            ptrdiff_t recv(char*, const size_t);
 
             bool operator==(const UDP_Connection&) const;
             bool operator!=(const UDP_Connection&) const;

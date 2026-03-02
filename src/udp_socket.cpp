@@ -201,16 +201,16 @@ namespace Socket {
         : ClientSocket(nullptr, port, e_socktype::DGRAM)
     {}
 
-    ssize_t UDP_Client::send(const char* data, const size_t len) const
+    ptrdiff_t UDP_Client::send(const char* data, const size_t len) const
     {
         return ::sendto(m_sock->sock, data, len, 0, (addr_t*)&m_sock->storage, m_sock->storage_len);
     }
 
-    ssize_t UDP_Client::recv(char* data, const size_t len) const
+    ptrdiff_t UDP_Client::recv(char* data, const size_t len) const
     {
         addr_storage_t from{};
         socklen_t from_len = sizeof(addr_storage_t);
-        ssize_t res;
+        ptrdiff_t res;
 
         do {
             res = ::recvfrom(m_sock->sock, data, len, 0, (addr_t*)&from, &from_len);
@@ -256,7 +256,7 @@ namespace Socket {
         enable_broadcast_on(m_sock->sock, true);
     }
 
-    ssize_t UDP_Broadcaster::send(const char* data, const size_t len) const
+    ptrdiff_t UDP_Broadcaster::send(const char* data, const size_t len) const
     {
         if (is_broadcast) {
             const auto current_cfg = get_config();
@@ -324,12 +324,12 @@ namespace Socket {
     }
 
 
-    ssize_t UDP_Host::UDP_Connection::send(const char* data, const size_t len) const
+    ptrdiff_t UDP_Host::UDP_Connection::send(const char* data, const size_t len) const
     {
         return ::sendto(m_sock->sock, data, len, 0, (addr_t*)&m_sock->storage, m_sock->storage_len);
     }
 
-    ssize_t UDP_Host::UDP_Connection::recv(char* data, const size_t len)
+    ptrdiff_t UDP_Host::UDP_Connection::recv(char* data, const size_t len)
     {
         if (m_dgrams.size() == 0) 
             auto_wait_cond(m_dgram_trigger, 50, [this]{ return m_dgrams.size() > 0; });

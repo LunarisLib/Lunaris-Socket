@@ -20,23 +20,23 @@ namespace Socket {
         : ClientSocket(address, port, e_socktype::STREAM)
     {}
 
-    ssize_t TCP_Client::send(const char* data, const size_t len) const
+    ptrdiff_t TCP_Client::send(const char* data, const size_t len) const
     {
         return m_sock ? ::send(m_sock->sock, data, len, 0) : -2;
     }
 
-    ssize_t TCP_Client::recv(char* data, const size_t len) const
+    ptrdiff_t TCP_Client::recv(char* data, const size_t len) const
     {
         return m_sock ? ::recv(m_sock->sock, data, len, 0) : -2;
     }
 
-    ssize_t TCP_Client::recv_autowait(char* data, const size_t len) const
+    ptrdiff_t TCP_Client::recv_autowait(char* data, const size_t len) const
     {
         if (!m_sock) return -2;
 
-        ssize_t accum = 0;
+        ptrdiff_t accum = 0;
         while(accum < len) {
-            ssize_t got = this->recv(data + accum, len - accum);
+            ptrdiff_t got = this->recv(data + accum, len - accum);
             if (got <= 0) return got;
             accum += got;
         }
