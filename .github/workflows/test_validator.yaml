@@ -14,10 +14,10 @@ jobs:
       - name: Build
         run: |
             sudo apt install -y cmake build-essential
-            sudo apt install -y gcc-15 g++-15
+            sudo apt install -y gcc-14 g++-14
 
-            sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-15 100
-            sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-15 100
+            sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-14 100
+            sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-14 100
 
             
             g++ --version
