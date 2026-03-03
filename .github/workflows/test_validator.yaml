@@ -73,4 +73,4 @@ jobs:
 
       - name: Test filtered
         if: matrix.os != 'ubuntu-latest'
-        run: ctest --test-dir build --output-on-failure --verbose -E udp_broadcast_test # Windows does not work with UDP Broadcast to INADDR_ANY in CI/CD
+        run: ctest --test-dir build --output-on-failure --verbose -E 'udp_.*_test' # Windows does not work with UDP Broadcast to INADDR_ANY in CI/CD
