@@ -1,7 +1,7 @@
 name: CMake CTest pipeline
+
 on:
   workflow_dispatch:
-
 
 jobs:
   test-project:
@@ -16,47 +16,53 @@ jobs:
           - os: ubuntu-latest
             compiler: gcc
             terminal: bash
-            generator: "Unix Makefiles"
 
           - os: windows-latest
             compiler: msvc
             terminal: bash
-            generator: "Visual Studio 17 2022"
 
           - os: windows-latest
             compiler: mingw
-            terminal: msys {0}
-            generator: "MinGW Makefiles"
-            
+            terminal: msys2 {0}
+
     defaults:
       run:
         shell: ${{ matrix.terminal }}
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Setup Linux
         if: matrix.compiler == 'gcc'
         run: |
-            sudo apt update
-            sudo apt install -y gcc-14 g++-14 cmake
-            
-            sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-14 100
-            sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-14 100
+          sudo apt update
+          sudo apt install -y gcc-14 g++-14 ninja-build cmake
+          sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-14 100
+          sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-14 100
+
+      - name: Setup MSVC Ninja
+        if: matrix.compiler == 'msvc'
+        run: |
+          choco install ninja --no-progress
 
       - name: Setup MinGW
         if: matrix.compiler == 'mingw'
         uses: msys2/setup-msys2@v2
         with:
           update: true
-          install: mingw-w64-x86_64-gcc mingw-w64-x86_64-cmake
+          install: >
+            mingw-w64-x86_64-gcc
+            mingw-w64-x86_64-cmake
+            mingw-w64-x86_64-ninja
+
+      - name: Configure
+        run: |
+          cmake -S . -B build \
+            -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release
 
       - name: Build
-        run: |
-            cmake -S . -B build -G "${{ matrix.generator }}"
-            cmake --build build --parallel 4 --config Release
-        
+        run: cmake --build build --parallel 4
+
       - name: Test
-        run: |
-            ctest --test-dir build --output-on-failure
+        run: ctest --test-dir build --output-on-failure
