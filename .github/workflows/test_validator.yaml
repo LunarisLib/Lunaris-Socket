@@ -6,14 +6,17 @@ on:
 jobs:
   test-project:
     name: Check project
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
       - name: Build
-        uses: LunarisLib/actions/CMake@master
-        with:
-            build_configuration: 'Release'
-            checkout: true
-            artifact_name: 'LunarisSocket'
-            
+        run: |
+          sudo apt install cmake build-essential -y
+
+          cmake -S . -B build
+          cmake --build build --parallel 4
+
       - name: Test Project
         uses: threeal/ctest-action@v1.1.0
