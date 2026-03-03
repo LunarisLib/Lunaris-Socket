@@ -13,10 +13,18 @@ jobs:
 
       - name: Build
         run: |
-          sudo apt install cmake build-essential -y
+            sudo apt install -y cmake build-essential
+            sudo apt install -y gcc-15 g++-15
 
-          cmake -S . -B build
-          cmake --build build --parallel 4
+            sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-15 100
+            sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-15 100
+
+            
+            g++ --version
+            gcc --version
+
+            cmake -S . -B build
+            cmake --build build --parallel 4
 
       - name: Test Project
         uses: threeal/ctest-action@v1.1.0
