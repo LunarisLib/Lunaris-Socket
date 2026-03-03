@@ -55,6 +55,9 @@ jobs:
             mingw-w64-x86_64-cmake
             mingw-w64-x86_64-ninja
 
+      - uses: ilammy/msvc-dev-cmd@v1
+        if: matrix.compiler == 'msvc'
+
       - name: Configure
         run: |
           cmake -S . -B build \
@@ -65,4 +68,4 @@ jobs:
         run: cmake --build build --parallel 4
 
       - name: Test
-        run: ctest --test-dir build --output-on-failure
+        run: ctest --test-dir build --output-on-failure --verbose
