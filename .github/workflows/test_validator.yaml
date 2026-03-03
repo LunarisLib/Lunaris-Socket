@@ -8,16 +8,12 @@ jobs:
     name: Check project
     runs-on: ubuntu-24.04
     steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-
-      - name: Check version
-        run: |
-          gcc --version
-          g++ --version
-
-      - name: Build Project
-        uses: threeal/cmake-action@v2.1.0
-
+      - name: Build
+        uses: LunarisLib/actions/CMake@master
+        with:
+            build_configuration: 'Release'
+            checkout: true
+            artifact_name: 'LunarisSocket'
+            
       - name: Test Project
         uses: threeal/ctest-action@v1.1.0
