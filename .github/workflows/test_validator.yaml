@@ -5,26 +5,53 @@ on:
 
 jobs:
   test-project:
-    name: Check project
-    runs-on: ubuntu-latest
+    name: Building and testing on ${{ matrix.os }} - ${{ matrix.compiler }}
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        include:
+          - os: ubuntu-latest
+            compiler: gcc
+            terminal: bash
+            generator: "Unix Makefiles"
+
+          - os: windows-latest
+            compiler: msvc
+            terminal: bash
+            generator: "Visual Studio 17 2022"
+
+          - os: windows-latest
+            compiler: mingw
+            terminal: msys {0}
+            generator: "MinGW Makefiles"
+
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
+
+      - name: Setup Linux
+        if: matrix.compiler == 'gcc'
+        run: |
+            sudo apt update
+            sudo apt install -y gcc-14 g++-14 cmake
+
+      - name: Setup MinGW
+        if: matrix.compiler == 'mingw'
+        uses: msys2/setup-msys2@v2
+        with:
+          update: true
+          install: mingw-w64-x86_64-gcc mingw-w64-x86_64-cmake
 
       - name: Build
+        shell: ${{ matrix.terminal }}
         run: |
-            sudo apt install -y cmake build-essential
-            sudo apt install -y gcc-14 g++-14
-
-            sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-14 100
-            sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-14 100
-
-            
-            g++ --version
-            gcc --version
-
-            cmake -S . -B build
-            cmake --build build --parallel 4
-
-      - name: Test Project
-        uses: threeal/ctest-action@v1.1.0
+            cmake -S . -B build -G "${{ matrix.generator }}"
+            cmake --build build --parallel 4 --config Release
+        
+      - name: Test
+        shell: ${{ matrix.terminal }}
+        run: |
+            ctest --test-dir build --output-on-failure
