@@ -1,0 +1,7 @@
+build/
+_obsolete/
+Testing/
+_______wrong_path/
+_trash/
+.vs/
+.vscode/
