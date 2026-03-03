@@ -27,6 +27,10 @@ jobs:
             compiler: mingw
             terminal: msys {0}
             generator: "MinGW Makefiles"
+            
+    defaults:
+      run:
+        shell: ${{ matrix.terminal }}
 
     steps:
       - name: Checkout
@@ -46,12 +50,10 @@ jobs:
           install: mingw-w64-x86_64-gcc mingw-w64-x86_64-cmake
 
       - name: Build
-        shell: ${{ matrix.terminal }}
         run: |
             cmake -S . -B build -G "${{ matrix.generator }}"
             cmake --build build --parallel 4 --config Release
         
       - name: Test
-        shell: ${{ matrix.terminal }}
         run: |
             ctest --test-dir build --output-on-failure
