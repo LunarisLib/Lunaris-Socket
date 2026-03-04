@@ -2,8 +2,8 @@ name: Deploy library
 
 on:
   push:
-    branches:
-        - master
+    tags:
+      - 'v*'
 
 jobs:
   make-libs:
@@ -16,14 +16,17 @@ jobs:
           - os: ubuntu-latest
             compiler: gcc
             terminal: bash
+            archive_ext: tar.gz
 
           - os: windows-latest
             compiler: msvc
             terminal: bash
+            archive_ext: zip
 
           - os: windows-latest
             compiler: mingw
             terminal: msys2 {0}
+            archive_ext: zip
 
     defaults:
       run:
@@ -71,11 +74,34 @@ jobs:
         run: |
             cmake -S example -B example-build -G Ninja -DCMAKE_PREFIX_PATH=../install -DCMAKE_BUILD_TYPE=Release
             cmake --build example-build --parallel 4
+
+      - name: Archive
+        run: |
+            if [ "${{ matrix.archive_ext }}" = "tar.gz" ]; then
+                tar -czf lunaris-socket-${{ matrix.os }}-${{ matrix.compiler }}.tar.gz install
+            else
+                powershell Compress-Archive -Path install\* -DestinationPath lunaris-socket-${{ matrix.os }}-${{ matrix.compiler }}.zip
+            fi
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: lunaris-${{ matrix.os }}-${{ matrix.compiler }}
+          path: |
+            *.tar.gz
+            *.zip
             
+  release:
+    needs: make-libs
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+            path: dist
+            merge-multiple: true
+
       - name: Create Release
-        if: success()
         uses: softprops/action-gh-release@v2
         with:
-            name: lunaris-socket-${{ matrix.os }}-${{ matrix.compiler }}
-            files: install/**
-
+          files: dist/*
