@@ -1,5 +1,5 @@
 #include <source_location>
-#include <print>
+#include <iostream>
 #include <format>
 #include <string.h>
 #include <mutex>
@@ -62,7 +62,7 @@ namespace Socket {
             tuple
         );
 
-        std::println("{}", msg);
+        std::cout << msg;
 #endif
     }
 
