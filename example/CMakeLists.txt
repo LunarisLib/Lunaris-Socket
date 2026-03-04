@@ -9,6 +9,9 @@ find_package(lunaris-socket REQUIRED)
 
 add_executable(example main.cpp)
 
+get_target_property(INCLUDES lunaris::lunaris-socket INTERFACE_INCLUDE_DIRECTORIES)
+message(STATUS "Includes: ${INCLUDES}")
+
 target_link_libraries(example
     PRIVATE
         lunaris::lunaris-socket
