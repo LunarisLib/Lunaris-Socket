@@ -32,6 +32,7 @@ foreach(file IN LISTS PROJECT_SOURCES)
 endforeach()
 
 add_library(${PROJECT_NAME})
+add_library(lunaris::${PROJECT_NAME} ALIAS ${PROJECT_NAME})
 
 target_sources(${PROJECT_NAME}
     PRIVATE
@@ -40,7 +41,8 @@ target_sources(${PROJECT_NAME}
 
 target_include_directories(${PROJECT_NAME}
     PUBLIC
-        ${CMAKE_CURRENT_SOURCE_DIR}/include
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+        $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
 )
 
 target_compile_definitions(${PROJECT_NAME}
@@ -64,3 +66,4 @@ if (BUILD_TESTS)
     add_subdirectory(tests)
 endif()
 
+include(cmake/install.cmake)

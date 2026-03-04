@@ -1,12 +1,13 @@
-name: CMake CTest pipeline
+name: Deploy library
 
 on:
-  workflow_dispatch:
-  pull_request:
+  push:
+    branches:
+        - master
 
 jobs:
-  test-project:
-    name: Building and testing on ${{ matrix.os }} - ${{ matrix.compiler }}
+  make-libs:
+    name: Building and deploying on ${{ matrix.os }} - ${{ matrix.compiler }}
     runs-on: ${{ matrix.os }}
 
     strategy:
@@ -59,17 +60,20 @@ jobs:
 
       - name: Configure
         run: |
-          cmake -S . -B build \
-            -G Ninja \
-            -DCMAKE_BUILD_TYPE=Release
+          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
 
       - name: Build
-        run: cmake --build build --parallel 4
+        run: cmake --install build --parallel 4 --prefix install
 
-      - name: Test
-        if: matrix.os == 'ubuntu-latest'
-        run: ctest --test-dir build --output-on-failure --verbose
+      - name: Check if it links
+        run: |
+            cmake -S example -B example-build -G Ninja -DCMAKE_PREFIX_PATH=../install -DCMAKE_BUILD_TYPE=Release
+            cmake --build example-build --parallel 4
+            
+      - name: Create Release
+        if: success()
+        uses: softprops/action-gh-release@v2
+        with:
+            name: lunaris-socket-${{ matrix.os }}-${{ matrix.compiler }}
+            files: install/**
 
-      - name: Test filtered
-        if: matrix.os != 'ubuntu-latest'
-        run: ctest --test-dir build --output-on-failure --verbose -E 'udp_.*_test' # Windows does not work with UDP Broadcast to INADDR_ANY in CI/CD
