@@ -59,10 +59,12 @@ jobs:
         if: matrix.compiler == 'msvc'
 
       - name: Configure
-        run: |
-          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+        run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
 
       - name: Build
+        run: cmake --build build --parallel 4
+
+      - name: Install
         run: cmake --install build --parallel 4 --prefix install
 
       - name: Check if it links
