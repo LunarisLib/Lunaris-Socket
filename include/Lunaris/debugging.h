@@ -1,7 +1,7 @@
 #include <source_location>
 #include <iostream>
 #include <format>
-#include <string.h>
+#include <cstring>
 #include <mutex>
 
 namespace Lunaris {

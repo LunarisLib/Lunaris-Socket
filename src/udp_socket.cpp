@@ -28,16 +28,14 @@ namespace Socket {
 
     constexpr uint16_t multicast_group_mdns = 0x00fb;
 
-    void auto_wait_cond(std::condition_variable& cond, unsigned long ms, std::function<bool()> pred)
-    {
+    void auto_wait_cond(std::condition_variable& cond, unsigned long ms, std::function<bool()> pred) {
         std::mutex _w;
         std::unique_lock<std::mutex> _l(_w);
 
         while (!cond.wait_for(_l, std::chrono::milliseconds(ms), pred));
     }
 
-    constexpr in6_addr make_v6_multicast(multicast_scope scope, uint16_t group)
-    {
+    constexpr in6_addr make_v6_multicast(multicast_scope scope, uint16_t group) {
         in6_addr addr{};
         addr.s6_addr[0] = 0xff;
         addr.s6_addr[1] = static_cast<uint8_t>(scope);
@@ -46,8 +44,7 @@ namespace Socket {
         return addr;
     };
 
-    static in_addr make_v4_multicast(uint16_t group)
-    {
+    static in_addr make_v4_multicast(uint16_t group) {
         in_addr addr{};
         char format[16];
         snprintf(format, 16, "239.255.%hu.%hu", group >> 8, group & 0xff);
@@ -116,8 +113,7 @@ namespace Socket {
         }
     }
     
-    constexpr void join_multicast_on(socket_t sock, e_family family, uint16_t gid, multicast_scope scope, bool join, int ttl)
-    {
+    constexpr void join_multicast_on(socket_t sock, e_family family, uint16_t gid, multicast_scope scope, bool join, int ttl) {
         if (gid == 0) {
             throw socket_exception("Multicast error - invalid group id. It cannot be zero.");
         }
@@ -205,13 +201,11 @@ namespace Socket {
         : ClientSocket(nullptr, port, e_socktype::DGRAM)
     {}
 
-    ptrdiff_t UDP_Client::send(const char* data, const size_t len) const
-    {
+    ptrdiff_t UDP_Client::send(const char* data, const size_t len) const {
         return ::sendto(m_sock->sock, data, len, 0, (addr_t*)&m_sock->storage, m_sock->storage_len);
     }
 
-    ptrdiff_t UDP_Client::recv(char* data, const size_t len) const
-    {
+    ptrdiff_t UDP_Client::recv(char* data, const size_t len) const {
         addr_storage_t from{};
         socklen_t from_len = sizeof(addr_storage_t);
         ptrdiff_t res;
@@ -224,16 +218,14 @@ namespace Socket {
         return res;
     }
 
-    void UDP_Client::enable_broadcast_ipv4(bool enable)
-    {
+    void UDP_Client::enable_broadcast_ipv4(bool enable) {
         if (!m_sock || get_family() != e_family::IPV4)
             throw socket_exception("Broadcast error - invalid setup: not IPV4 only or empty socket");
 
         enable_broadcast_on(m_sock->sock, enable);
     }
     
-    void UDP_Client::join_multicast(uint16_t gid, multicast_scope scope, bool join, int ttl)
-    {
+    void UDP_Client::join_multicast(uint16_t gid, multicast_scope scope, bool join, int ttl) {
         const auto current_family = get_family();
 
         if (!m_sock || current_family == e_family::UNSPEC || m_sock->type != e_socktype::DGRAM)
@@ -260,8 +252,7 @@ namespace Socket {
         enable_broadcast_on(m_sock->sock, true);
     }
 
-    ptrdiff_t UDP_Broadcaster::send(const char* data, const size_t len) const
-    {
+    ptrdiff_t UDP_Broadcaster::send(const char* data, const size_t len) const {
         if (is_broadcast) {
             const auto current_cfg = get_config();
             _lunaris_socket_debug_c("BROADCASTING DATA IPV4 SIZE={} PORT={}", len, current_cfg.port);
@@ -328,13 +319,11 @@ namespace Socket {
     }
 
 
-    ptrdiff_t UDP_Host::UDP_Connection::send(const char* data, const size_t len) const
-    {
+    ptrdiff_t UDP_Host::UDP_Connection::send(const char* data, const size_t len) const {
         return ::sendto(m_sock->sock, data, len, 0, (addr_t*)&m_sock->storage, m_sock->storage_len);
     }
 
-    ptrdiff_t UDP_Host::UDP_Connection::recv(char* data, const size_t len)
-    {
+    ptrdiff_t UDP_Host::UDP_Connection::recv(char* data, const size_t len) {
         if (m_dgrams.size() == 0) 
             auto_wait_cond(m_dgram_trigger, 50, [this]{ return m_dgrams.size() > 0; });
         
@@ -346,12 +335,11 @@ namespace Socket {
         return pkg.recvd;
     }
 
-    bool UDP_Host::UDP_Connection::operator==(const UDP_Connection& o) const
-    {
+    bool UDP_Host::UDP_Connection::operator==(const UDP_Connection& o) const {
         return o.m_sock && this->m_sock && (*o.m_sock) == (*this->m_sock);
     }
-    bool UDP_Host::UDP_Connection::operator!=(const UDP_Connection& o) const
-    {
+
+    bool UDP_Host::UDP_Connection::operator!=(const UDP_Connection& o) const {
         return !o.m_sock || !this->m_sock || (*o.m_sock) != (*this->m_sock);
     }
 
@@ -362,8 +350,7 @@ namespace Socket {
     UDP_Host::UDP_Host(uint16_t port, e_family family)
         : HostSocket(port, family, e_socktype::DGRAM),
           m_async_recv([this]{ async_recv(); })
-    {
-    }
+    {}
 
     UDP_Host::~UDP_Host() {
         m_async_stop = true;
@@ -373,8 +360,7 @@ namespace Socket {
         m_waiting_conns.clear();
     }
 
-    std::shared_ptr<UDP_Host::UDP_Connection> UDP_Host::accept()
-    {
+    std::shared_ptr<UDP_Host::UDP_Connection> UDP_Host::accept() {
         if (m_waiting_conns.size() == 0) {
             _lunaris_socket_debug_c("ON WAIT UDP_HOST::ACCEPT");
             auto_wait_cond(m_wait_for_new_connection, 200, [this]{ return m_waiting_conns.size() > 0; });
@@ -389,26 +375,22 @@ namespace Socket {
         return ptr;
     }
 
-    size_t UDP_Host::size() const 
-    {
+    size_t UDP_Host::size() const {
         return m_waiting_conns.size() + m_accepted_conns.size();
     }
 
-    size_t UDP_Host::size_on_queue() const 
-    {
+    size_t UDP_Host::size_on_queue() const {
         return m_waiting_conns.size();
     }
 
-    void UDP_Host::enable_broadcast_ipv4(bool enable)
-    {
+    void UDP_Host::enable_broadcast_ipv4(bool enable) {
         if (!m_sock || get_family() != e_family::IPV4)
             throw socket_exception("Broadcast error - invalid setup: not IPV4 only or empty socket");
 
         enable_broadcast_on(m_sock->sock, enable);
     }
     
-    void UDP_Host::join_multicast(uint16_t gid, multicast_scope scope, bool join, int ttl)
-    {
+    void UDP_Host::join_multicast(uint16_t gid, multicast_scope scope, bool join, int ttl) {
         const auto current_family = get_family();
 
         if (!m_sock || current_family == e_family::UNSPEC || m_sock->type != e_socktype::DGRAM)
@@ -417,8 +399,7 @@ namespace Socket {
         join_multicast_on(m_sock->sock, current_family, gid, scope, join, ttl);
     }
 
-    void UDP_Host::async_recv()
-    {
+    void UDP_Host::async_recv() {
         const auto check_sock_has_in = [](socket_t s) -> bool {
             constexpr unsigned long nfds = 1;
             poll_t poll[nfds];
@@ -593,8 +574,7 @@ namespace Socket {
         }
     }
 
-    void UDP_Host::clear_weak_conns()
-    {
+    void UDP_Host::clear_weak_conns() {
         std::unique_lock<std::shared_mutex> l(m_conns_mtx);
         for(auto i = m_accepted_conns.begin(); i != m_accepted_conns.end();) {
             if (i->expired()) i = m_accepted_conns.erase(i);

@@ -14,8 +14,7 @@ namespace Socket {
     {
     }
 
-    const char* socket_exception::what() const noexcept
-    {
+    const char* socket_exception::what() const noexcept {
         return std::runtime_error::what();
     }
 

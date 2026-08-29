@@ -20,68 +20,59 @@ namespace Base {
 
 #pragma region Local tools hidden
 
-e_family _get_family_from_ip_addr(const char* ip)
-{
-    if (!ip) {
+    e_family _get_family_from_ip_addr(const char* ip) {
+        if (!ip) {
+            return e_family::UNSPEC;
+        }
+
+        unsigned char buf[sizeof(struct in6_addr)];
+
+        if (inet_pton(AF_INET, ip, buf) == 1) {
+            return e_family::IPV4;
+        }
+
+        if (inet_pton(AF_INET6, ip, buf) == 1) {
+            return e_family::IPV6;
+        }
+
         return e_family::UNSPEC;
     }
-
-    unsigned char buf[sizeof(struct in6_addr)];
-
-    if (inet_pton(AF_INET, ip, buf) == 1) {
-        return e_family::IPV4;
-    }
-
-    if (inet_pton(AF_INET6, ip, buf) == 1) {
-        return e_family::IPV6;
-    }
-
-    return e_family::UNSPEC;
-}
 
 #pragma endregion
 
 #pragma region Base Socket - shared functions
 
-    bool BaseSocket::valid() const
-    {
+    bool BaseSocket::valid() const {
         return m_sock && platform::is_socket_valid(m_sock->sock);
     }
     
-    BaseSocket::operator bool() const
-    {
+    BaseSocket::operator bool() const {
         return m_sock && platform::is_socket_valid(m_sock->sock);
     }
 
-    int BaseSocket::getopt(int level, int opt, int& res) const
-    {
+    int BaseSocket::getopt(int level, int opt, int& res) const {
         if (!m_sock) return -1;
         return platform::get_socket_opt(m_sock->sock, level, opt, res);
     }
 
-    e_socktype BaseSocket::get_type() const
-    {
+    e_socktype BaseSocket::get_type() const {
         int proto = 0;
         return this->getopt(SOL_SOCKET, SO_TYPE, proto) == 0
             ? static_cast<e_socktype>(proto)
             : e_socktype::DGRAM;
     }
 
-    e_family BaseSocket::get_family() const
-    {
+    e_family BaseSocket::get_family() const {
         if (!m_sock) return e_family::UNSPEC;
         const sockaddr* sa = (struct sockaddr*)(&m_sock->storage);
         return static_cast<e_family>(sa->sa_family);
-
     }
 
-    int BaseSocket::ioctl(int flag, u_long mode)
-    {
+    int BaseSocket::ioctl(int flag, u_long mode) {
         return m_sock ? platform::ioctlsocket(m_sock->sock, flag, mode) : -1;
     }
 
-    address_storage BaseSocket::get_config() const
-    {
+    address_storage BaseSocket::get_config() const {
         if (!m_sock) return {};
 
         const sockaddr* sa = (struct sockaddr*)(&m_sock->storage);
@@ -110,8 +101,7 @@ e_family _get_family_from_ip_addr(const char* ip)
         };
     }
 
-    void BaseSocket::close()
-    {
+    void BaseSocket::close() {
         m_sock.reset();
     }
 
@@ -154,8 +144,7 @@ e_family _get_family_from_ip_addr(const char* ip)
     }
 #endif
 
-    BaseSocket::sock_info::~sock_info()
-    {
+    BaseSocket::sock_info::~sock_info() {
         if (owns_socket && platform::is_socket_valid(sock)){
             _lunaris_socket_debug_c("sock_info: deleted sock_info, sock={:08X}", (uint64_t)sock);
             platform::closesocket(sock);
@@ -164,8 +153,7 @@ e_family _get_family_from_ip_addr(const char* ip)
         sock = platform::get_invalid_socket();
     }
 
-    std::unique_ptr<BaseSocket::sock_info> BaseSocket::sock_info::make_ref() const
-    {
+    std::unique_ptr<BaseSocket::sock_info> BaseSocket::sock_info::make_ref() const {
         _lunaris_socket_debug_c("sock_info: referencing sock_info, sock={:08X}", (uint64_t)sock);
 #ifdef _WIN32
         auto cpy = std::make_unique<sock_info>(sock, type, (addr_storage_t*)&storage, storage_len, wsarecvmsg_fn);
@@ -176,13 +164,11 @@ e_family _get_family_from_ip_addr(const char* ip)
         return cpy;
     }
 
-    bool BaseSocket::sock_info::operator==(const sock_info& o) const
-    {
+    bool BaseSocket::sock_info::operator==(const sock_info& o) const {
         return ::memcmp(this, &o, sizeof(*this)) == 0;
     }
 
-    bool BaseSocket::sock_info::operator!=(const sock_info& o) const
-    {
+    bool BaseSocket::sock_info::operator!=(const sock_info& o) const {
         return ::memcmp(this, &o, sizeof(*this)) != 0;
     }
 
@@ -190,8 +176,7 @@ e_family _get_family_from_ip_addr(const char* ip)
 
 #pragma region Client Socket specific
 
-    ClientSocket::ClientSocket(const char* address, uint16_t port, e_socktype type)
-    {
+    ClientSocket::ClientSocket(const char* address, uint16_t port, e_socktype type) {
         addr_info_t* info;
         addr_info_t hints;
         memset((void*)&hints, 0, sizeof(hints));
@@ -227,8 +212,7 @@ e_family _get_family_from_ip_addr(const char* ip)
     }
 
 
-    ClientSocket::ClientSocket(std::unique_ptr<BaseSocket::sock_info>&& pre_cfg)
-    {
+    ClientSocket::ClientSocket(std::unique_ptr<BaseSocket::sock_info>&& pre_cfg) {
         m_sock = std::move(pre_cfg);
     }
 
@@ -236,8 +220,7 @@ e_family _get_family_from_ip_addr(const char* ip)
 
 #pragma region Host Socket specific
 
-    HostSocket::HostSocket(uint16_t port, e_family family, e_socktype type)
-    {
+    HostSocket::HostSocket(uint16_t port, e_family family, e_socktype type) {
         const bool using_v6 = family != e_family::IPV4;
 
         socket_t s = ::socket(
