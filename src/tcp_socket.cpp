@@ -11,8 +11,8 @@
 
 #include <string.h>
 
-#include <Lunaris/tcp_socket.h>
-#include <Lunaris/exception.h>
+#include <Lunaris/Socket/tcp_socket.h>
+#include <Lunaris/Socket/exception.h>
 
 namespace Lunaris {
 namespace Socket {

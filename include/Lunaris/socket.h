@@ -1,6 +1,6 @@
 #pragma once
 
-#include <Lunaris/exception.h>
+#include <Lunaris/Socket/exception.h>
 
-#include <Lunaris/tcp_socket.h>
-#include <Lunaris/udp_socket.h>
+#include <Lunaris/Socket/tcp_socket.h>
+#include <Lunaris/Socket/udp_socket.h>
