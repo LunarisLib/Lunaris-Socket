@@ -28,80 +28,21 @@ jobs:
             terminal: msys2 {0}
             archive_ext: zip
 
-    defaults:
-      run:
-        shell: ${{ matrix.terminal }}
-
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - name: Setup Linux
-        if: matrix.compiler == 'gcc'
-        run: |
-          sudo apt update
-          sudo apt install -y gcc-14 g++-14 ninja-build cmake
-          sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-14 100
-          sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-14 100
-
-      - name: Setup MSVC Ninja
-        if: matrix.compiler == 'msvc'
-        run: |
-          choco install ninja --no-progress
-
-      - name: Setup MinGW
-        if: matrix.compiler == 'mingw'
-        uses: msys2/setup-msys2@v2
+      - name: Build & Test
+        uses: LunarisLib/actions/Build@revamp
         with:
-          update: true
-          install: >
-            mingw-w64-x86_64-gcc
-            mingw-w64-x86_64-cmake
-            mingw-w64-x86_64-ninja
-
-      - uses: ilammy/msvc-dev-cmd@v1
-        if: matrix.compiler == 'msvc'
-
-      - name: Configure
-        run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
-
-      - name: Build
-        run: cmake --build build --parallel 4
-
-      - name: Install
-        run: cmake --install build --parallel 4 --prefix install
-
-      - name: Check if it links
-        run: |
-            cmake -S example -B example-build -G Ninja -DCMAKE_PREFIX_PATH=../install -DCMAKE_BUILD_TYPE=Release
-            cmake --build example-build --parallel 4
-
-      - name: Archive
-        run: |
-            if [ "${{ matrix.archive_ext }}" = "tar.gz" ]; then
-                tar -czf lunaris-socket-${{ matrix.os }}-${{ matrix.compiler }}.tar.gz install
-            else
-                powershell Compress-Archive -Path install\* -DestinationPath lunaris-socket-${{ matrix.os }}-${{ matrix.compiler }}.zip
-            fi
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: lunaris-${{ matrix.os }}-${{ matrix.compiler }}
-          path: |
-            *.tar.gz
-            *.zip
+          compiler: ${{ matrix.compiler }}
+          shell: ${{ matrix.terminal }}
+          install: true
+          test: true
             
   release:
     needs: make-libs
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest    
 
     steps:
-      - uses: actions/download-artifact@v4
-        with:
-            path: dist
-            merge-multiple: true
-
-      - name: Create Release
-        uses: softprops/action-gh-release@v2
-        with:
-          files: dist/*
+      - name: Make Release
+        uses: LunarisLib/actions/Release@revamp

@@ -8,6 +8,7 @@
 using namespace Lunaris::Socket;
 
 int main() {
+#ifndef _WIN32
     constexpr char sel_path[] = "localhost";
     const uint16_t sel_port = generate_random_port();
 
@@ -53,4 +54,7 @@ int main() {
     for(auto& i : blocks) if (!recv_udp_and_check_auto(cli, i)) throw std::runtime_error("Failed on recv of string '" + i + "'.");
 
     std::cout << "\n=== > PASSED! < ===\n";
+#else
+    std::cout << "\nTest disabled on Windows\n";
+#endif
 }

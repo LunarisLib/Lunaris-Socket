@@ -29,18 +29,15 @@ namespace Socket {
         : ClientSocket(address, port, e_socktype::STREAM)
     {}
 
-    ptrdiff_t TCP_Client::send(const char* data, const size_t len) const
-    {
+    ptrdiff_t TCP_Client::send(const char* data, const size_t len) const {
         return m_sock ? ::send(m_sock->sock, data, len, 0) : -2;
     }
 
-    ptrdiff_t TCP_Client::recv(char* data, const size_t len) const
-    {
+    ptrdiff_t TCP_Client::recv(char* data, const size_t len) const {
         return m_sock ? ::recv(m_sock->sock, data, len, 0) : -2;
     }
 
-    ptrdiff_t TCP_Client::recv_autowait(char* data, const size_t len) const
-    {
+    ptrdiff_t TCP_Client::recv_autowait(char* data, const size_t len) const {
         if (!m_sock) return -2;
 
         ptrdiff_t accum = 0;
@@ -53,8 +50,7 @@ namespace Socket {
         return accum;
     }
 
-    size_t TCP_Client::recv_size() const
-    {
+    size_t TCP_Client::recv_size() const {
         int res = 0;
         if (platform::ioctlsocket(m_sock->sock, FIONREAD, res) < 0) return 0;
         return static_cast<size_t>(res);
@@ -64,8 +60,7 @@ namespace Socket {
         : HostSocket(port, family, e_socktype::STREAM)
     {}
 
-    TCP_Client TCP_Host::accept() const
-    {
+    TCP_Client TCP_Host::accept() const {
         addr_storage_t storage = {};
         socklen_t storage_len = sizeof(addr_storage_t);
 
