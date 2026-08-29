@@ -8,6 +8,7 @@ namespace Lunaris {
 namespace Socket {
 
 
+#ifdef LUNARIS_DEBUG
     template <typename... Args>
     inline void __lunaris_socket_debug(
         void* self,
@@ -15,7 +16,6 @@ namespace Socket {
         const std::source_location& loc,
         Args&&... args
     ) {
-#ifdef LUNARIS_DEBUG
         static std::mutex mtx;
 
         constexpr size_t max_len = 20;
@@ -63,11 +63,17 @@ namespace Socket {
         );
 
         std::cout << msg;
-#endif
     }
 
 #define _lunaris_socket_debug(fmt, ...) Lunaris::Socket::__lunaris_socket_debug(nullptr, fmt, std::source_location::current() __VA_OPT__(,) __VA_ARGS__)
 #define _lunaris_socket_debug_c(fmt, ...) Lunaris::Socket::__lunaris_socket_debug((void*)this, fmt, std::source_location::current() __VA_OPT__(,) __VA_ARGS__)
+
+#else // No debugging
+
+#define _lunaris_socket_debug(fmt, ...) 
+#define _lunaris_socket_debug_c(fmt, ...) 
+
+#endif
 
 
 } // namespace Socket

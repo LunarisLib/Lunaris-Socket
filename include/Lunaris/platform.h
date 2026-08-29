@@ -43,6 +43,9 @@ namespace Socket {
     constexpr auto SO_REUSEADDR_AUTO = SO_REUSEADDR;
 #endif
 
+    /**
+     * @brief Most important err types for us in an enum
+     */
     enum class e_errno : int {
         OTHER,
         WOULD_BLOCK,
