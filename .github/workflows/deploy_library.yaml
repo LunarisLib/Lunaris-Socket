@@ -28,51 +28,26 @@ jobs:
             terminal: msys2 {0}
             archive_ext: zip
 
-    defaults:
-      run:
-        shell: ${{ matrix.terminal }}
-
     steps:
       - uses: actions/checkout@v7
 
       - name: Setup
-        uses: $/.github/actions/setup_compiler
+        uses: LunarisLib/actions/Setup@revamp
         with:
           compiler: ${{ matrix.compiler }}
           shell: ${{ matrix.terminal }}
 
       - name: Build & Test
-        uses: $/.github/actions/build_and_test
+        uses: LunarisLib/actions/Build@revamp
         with:
           shell: ${{ matrix.terminal }}
-
-      - name: Archive
-        run: |
-            if [ "${{ matrix.archive_ext }}" = "tar.gz" ]; then
-                tar -czf lunaris-socket-${{ matrix.os }}-${{ matrix.compiler }}.tar.gz install
-            else
-                powershell Compress-Archive -Path install\* -DestinationPath lunaris-socket-${{ matrix.os }}-${{ matrix.compiler }}.zip
-            fi
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: lunaris-${{ matrix.os }}-${{ matrix.compiler }}
-          path: |
-            *.tar.gz
-            *.zip
+          install: true
+          test: true
             
   release:
     needs: make-libs
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest    
 
     steps:
-      - uses: actions/download-artifact@v4
-        with:
-            path: dist
-            merge-multiple: true
-
-      - name: Create Release
-        uses: softprops/action-gh-release@v2
-        with:
-          files: dist/*
+      - name: Make Release
+        uses: LunarisLib/actions/Release@revamp

@@ -8,6 +8,7 @@
 using namespace Lunaris::Socket;
 
 int main() {
+#ifndef _WIN32
     const uint16_t sel_port = generate_random_port();
     const uint16_t sel_group = 1234;
     const multicast_scope sel_scope = multicast_scope::link_local;
@@ -44,4 +45,7 @@ int main() {
     if (!recv_udp_and_check_auto(hst, second_msg)) throw std::runtime_error("Failed on recv2 of broadcasted message.");
 
     std::cout << "\n=== > PASSED! < ===\n";
+#else
+    std::cout << "\nTest disabled on Windows\n";
+#endif
 }
