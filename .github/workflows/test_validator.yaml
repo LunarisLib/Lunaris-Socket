@@ -31,15 +31,10 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - name: Setup
-        uses: LunarisLib/actions/Setup@revamp
-        with:
-          compiler: ${{ matrix.compiler }}
-          shell: ${{ matrix.terminal }}
-
       - name: Build & Test
         uses: LunarisLib/actions/Build@revamp
         with:
+          compiler: ${{ matrix.compiler }}
           shell: ${{ matrix.terminal }}
           install: false
           test: true
