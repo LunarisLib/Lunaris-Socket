@@ -1,12 +1,12 @@
 cmake_minimum_required(VERSION 3.19)
 
 project(lunaris-socket
-    VERSION "2.0.0"
+    VERSION "1.0.1"
     DESCRIPTION "A simple socket library"
     LANGUAGES CXX
 )
 
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
@@ -26,7 +26,7 @@ else()
     list(APPEND PROJECT_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/platform_linux.cpp")
 endif()
 
-message(STATUS "Files used for compilation:")
+message(STATUS "Files used for compilation of lunaris::${PROJECT_NAME}:")
 foreach(file IN LISTS PROJECT_SOURCES)
     message(STATUS " - ${file}")
 endforeach()
@@ -61,9 +61,11 @@ endif()
 
 option(BUILD_TESTS "Build tests" ON)
 
-if (BUILD_TESTS)
-    enable_testing()
-    add_subdirectory(tests)
-endif()
+if (CMAKE_CURRENT_SOURCE_DIR STREQUAL CMAKE_SOURCE_DIR)
+    if (BUILD_TESTS)
+        enable_testing()
+        add_subdirectory(tests)
+    endif()
 
-include(cmake/install.cmake)
+    include(cmake/install.cmake)
+endif()

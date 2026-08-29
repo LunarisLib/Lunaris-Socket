@@ -1,0 +1,41 @@
+name: 'Compiler install'
+description: 'Install compiler based on OS and param automatically'
+inputs:
+  compiler:
+    description: 'What compiler? (GCC, MINGW, VS)'
+    required: true
+  shell:
+    description: 'The shell to execute steps'
+    required: false
+    default: 'bash'
+
+runs:
+  using: composite
+  steps:
+    - name: Setup Linux
+      shell: ${{ inputs.shell }}
+      if: inputs.compiler == 'gcc'
+      run: |
+        sudo apt update
+        sudo apt install -y gcc-14 g++-14 ninja-build cmake
+        sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-14 100
+        sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-14 100
+
+    - name: Setup MSVC Ninja
+      if: inputs.compiler == 'msvc'
+      shell: ${{ inputs.shell }}
+      run: |
+        choco install ninja --no-progress
+
+    - name: Setup MinGW
+      if: inputs.compiler == 'mingw'
+      uses: msys2/setup-msys2@v2
+      with:
+        update: true
+        install: >
+          mingw-w64-x86_64-gcc
+          mingw-w64-x86_64-cmake
+          mingw-w64-x86_64-ninja
+
+    - uses: ilammy/msvc-dev-cmd@v1
+      if: inputs.compiler == 'msvc'

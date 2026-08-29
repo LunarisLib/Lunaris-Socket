@@ -1,4 +1,4 @@
-name: CMake CTest pipeline
+name: CMake CTest
 
 on:
   workflow_dispatch:
@@ -29,47 +29,15 @@ jobs:
         shell: ${{ matrix.terminal }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - name: Setup Linux
-        if: matrix.compiler == 'gcc'
-        run: |
-          sudo apt update
-          sudo apt install -y gcc-14 g++-14 ninja-build cmake
-          sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-14 100
-          sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-14 100
-
-      - name: Setup MSVC Ninja
-        if: matrix.compiler == 'msvc'
-        run: |
-          choco install ninja --no-progress
-
-      - name: Setup MinGW
-        if: matrix.compiler == 'mingw'
-        uses: msys2/setup-msys2@v2
+      - name: Setup
+        uses: $/.github/actions/setup_compiler
         with:
-          update: true
-          install: >
-            mingw-w64-x86_64-gcc
-            mingw-w64-x86_64-cmake
-            mingw-w64-x86_64-ninja
+          compiler: ${{ matrix.compiler }}
+          shell: ${{ matrix.terminal }}
 
-      - uses: ilammy/msvc-dev-cmd@v1
-        if: matrix.compiler == 'msvc'
-
-      - name: Configure
-        run: |
-          cmake -S . -B build \
-            -G Ninja \
-            -DCMAKE_BUILD_TYPE=Release
-
-      - name: Build
-        run: cmake --build build --parallel 4
-
-      - name: Test
-        if: matrix.os == 'ubuntu-latest'
-        run: ctest --test-dir build --output-on-failure --verbose
-
-      - name: Test filtered
-        if: matrix.os != 'ubuntu-latest'
-        run: ctest --test-dir build --output-on-failure --verbose -E 'udp_.*_test' # Windows does not work with UDP Broadcast to INADDR_ANY in CI/CD
+      - name: Build & Test
+        uses: $/.github/actions/build_and_test
+        with:
+          shell: ${{ matrix.terminal }}
