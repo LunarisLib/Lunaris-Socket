@@ -75,7 +75,7 @@ namespace detail {
         WSAInitializer() {
             WSADATA data;
             if (WSAStartup(MAKEWORD(2, 2), &data) != 0) {
-                throw socket_exception("Cannot initialize winsock!");
+                throw SocketException("Cannot initialize winsock!");
             }
         }
 

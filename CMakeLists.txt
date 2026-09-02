@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.19)
 
 project(lunaris-socket
-    VERSION "1.0.1"
+    VERSION "1"
     DESCRIPTION "A simple socket library"
     LANGUAGES CXX
 )

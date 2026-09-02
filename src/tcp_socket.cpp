@@ -25,19 +25,19 @@ namespace Socket {
 
 #pragma region TCP Area
 
-    TCP_Client::TCP_Client(const char* address, const uint16_t port)
+    TCPClient::TCPClient(const char* address, const uint16_t port)
         : ClientSocket(address, port, e_socktype::STREAM)
     {}
 
-    ptrdiff_t TCP_Client::send(const char* data, const size_t len) const {
+    ptrdiff_t TCPClient::send(const char* data, const size_t len) const {
         return m_sock ? ::send(m_sock->sock, data, len, 0) : -2;
     }
 
-    ptrdiff_t TCP_Client::recv(char* data, const size_t len) const {
+    ptrdiff_t TCPClient::recv(char* data, const size_t len) const {
         return m_sock ? ::recv(m_sock->sock, data, len, 0) : -2;
     }
 
-    ptrdiff_t TCP_Client::recv_autowait(char* data, const size_t len) const {
+    ptrdiff_t TCPClient::recv_autowait(char* data, const size_t len) const {
         if (!m_sock) return -2;
 
         ptrdiff_t accum = 0;
@@ -50,28 +50,28 @@ namespace Socket {
         return accum;
     }
 
-    size_t TCP_Client::recv_size() const {
+    size_t TCPClient::recv_size() const {
         int res = 0;
         if (platform::ioctlsocket(m_sock->sock, FIONREAD, res) < 0) return 0;
         return static_cast<size_t>(res);
     }
 
-    TCP_Host::TCP_Host(uint16_t port, e_family family)
+    TCPHost::TCPHost(uint16_t port, e_family family)
         : HostSocket(port, family, e_socktype::STREAM)
     {}
 
-    TCP_Client TCP_Host::accept() const {
+    TCPClient TCPHost::accept() const {
         addr_storage_t storage = {};
         socklen_t storage_len = sizeof(addr_storage_t);
 
         auto s = ::accept(m_sock->sock, (addr_t*)&storage, &storage_len);
 
         if (!platform::is_socket_valid(s))
-            throw socket_exception("Could not instantiate accepted socket - failed to create socket");
+            throw SocketException("Could not instantiate accepted socket - failed to create socket");
 
         auto info = std::make_unique<sock_info>(s, m_sock->type, &storage, storage_len);
 
-        return TCP_Client{ std::move(info) };
+        return TCPClient{ std::move(info) };
     }
 
 #pragma endregion

@@ -18,10 +18,10 @@ int main() {
     std::cout << "=== > Initializing integration test with random port selected '" << sel_port << "' < ===\n";
 
     std::cout << "host>";
-    UDP_Host host(sel_port, e_family::IPV6);
+    UDPHost host(sel_port, e_family::IPV6);
 
     std::cout << "multicast>";
-    UDP_Broadcaster cli(sel_port, sel_group, e_family::IPV6, sel_scope);
+    UDPBroadcaster cli(sel_port, sel_group, e_family::IPV6, sel_scope);
 
     std::cout << "host_mc_on>";
     host.join_multicast(sel_group, sel_scope, true);

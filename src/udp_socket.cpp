@@ -52,7 +52,7 @@ namespace Socket {
         return addr;
     };
 
-    constexpr void extract_scope_and_group_from_msghdr(message& msg, UDP_Host::package& pkg) {
+    constexpr void extract_scope_and_group_from_msghdr(message& msg, UDPHost::package& pkg) {
         for (cmsghdr* cmsg = CMSG_FIRSTHDR(&msg); cmsg; cmsg = CMSG_NXTHDR(&msg, cmsg))
         {
             if (cmsg->cmsg_level == IPPROTO_IPV6 &&
@@ -66,7 +66,7 @@ namespace Socket {
                 if (!IN6_IS_ADDR_MULTICAST(&dst))
                     continue;
 
-                pkg.type = UDP_Host::package::type::multicast;
+                pkg.type = UDPHost::package::type::multicast;
                 pkg.mc_scope = static_cast<multicast_scope>(dst.s6_addr[1] & 0x0f);
                 pkg.mc_group =
                     (static_cast<uint16_t>(dst.s6_addr[14]) << 8) |
@@ -84,13 +84,13 @@ namespace Socket {
                 uint32_t dst = ntohl(iinfo->ipi_addr.s_addr);
 
                 if (dst == 0xffffffff) {
-                    pkg.type = UDP_Host::package::type::broadcast;
+                    pkg.type = UDPHost::package::type::broadcast;
                     pkg.mc_scope = multicast_scope::site_local;
                     break;
                 }
 
                 if ((dst & 0xf0000000) == 0xe0000000) {
-                    pkg.type = UDP_Host::package::type::multicast;
+                    pkg.type = UDPHost::package::type::multicast;
                     pkg.mc_scope = multicast_scope::site_local;
                     pkg.mc_group =
                         static_cast<uint16_t>(
@@ -105,28 +105,28 @@ namespace Socket {
 
     static void enable_broadcast_on(socket_t sock, bool enable) {
         if (platform::set_socket_opt(sock, SOL_SOCKET, SO_BROADCAST, enable ? 1 : 0) != 0) {
-            throw socket_exception("Broadcast error - cannot toggle broadcast");
+            throw SocketException("Broadcast error - cannot toggle broadcast");
         }
 
         if (platform::set_socket_opt(sock, IPPROTO_IP, IP_PKTINFO, enable ? 1 : 0) != 0) {
-            throw socket_exception("Broadcast error - cannot set packet info");
+            throw SocketException("Broadcast error - cannot set packet info");
         }
     }
     
     constexpr void join_multicast_on(socket_t sock, e_family family, uint16_t gid, multicast_scope scope, bool join, int ttl) {
         if (gid == 0) {
-            throw socket_exception("Multicast error - invalid group id. It cannot be zero.");
+            throw SocketException("Multicast error - invalid group id. It cannot be zero.");
         }
 
         if (ttl <= 0) ttl = 1;
         if (ttl > 255) ttl = 255;
 
         if (/*!m_sock || */family == e_family::UNSPEC/* || m_sock->type != e_socktype::DGRAM*/)
-            throw socket_exception("Multicast error - you cannot enable multicast on dual (UNSPEC) or non DGRAM socket.");
+            throw SocketException("Multicast error - you cannot enable multicast on dual (UNSPEC) or non DGRAM socket.");
 
         if (family == e_family::IPV4) {
             if (scope != multicast_scope::link_local)
-                throw socket_exception("Multicast error - IPV4 only supports LINK_LOCAL as option for multicast scope.");
+                throw SocketException("Multicast error - IPV4 only supports LINK_LOCAL as option for multicast scope.");
 
             ip_mreq mreq{};
             mreq.imr_interface.s_addr = INADDR_ANY;
@@ -140,10 +140,10 @@ namespace Socket {
                     break;
             }
             if (platform::set_socket_opt(sock, IPPROTO_IP, IP_PKTINFO, 1) != 0) {
-                throw socket_exception("Multicast error - cannot enable packet info");
+                throw SocketException("Multicast error - cannot enable packet info");
             }
             if (platform::set_socket_opt(sock, IPPROTO_IP, IP_MULTICAST_TTL, ttl) != 0) {
-                throw socket_exception("Multicast error - cannot set TTL");
+                throw SocketException("Multicast error - cannot set TTL");
             }
 
             int opt = join ? IP_ADD_MEMBERSHIP : IP_DROP_MEMBERSHIP;
@@ -154,7 +154,7 @@ namespace Socket {
                 &mreq,
                 sizeof(mreq)
             ) != 0) {
-                throw socket_exception("Multicast error - cannot add/drop multicast membership");
+                throw SocketException("Multicast error - cannot add/drop multicast membership");
             }
 
             return;
@@ -167,11 +167,11 @@ namespace Socket {
             mreq.ipv6mr_interface = 0; // let the kernel decide
 
             if (platform::set_socket_opt(sock, IPPROTO_IPV6, IPV6_RECV_PKT_INFO, 1) != 0) {
-                throw socket_exception("Multicast error - cannot enable packet info");
+                throw SocketException("Multicast error - cannot enable packet info");
             }
             
             if (platform::set_socket_opt(sock, IPPROTO_IPV6, IPV6_MULTICAST_HOPS, ttl) != 0) {
-                throw socket_exception("Multicast error - cannot set TTL");
+                throw SocketException("Multicast error - cannot set TTL");
             }
 
             int opt = join ? IPV6_JOIN_GROUP : IPV6_LEAVE_GROUP;
@@ -182,7 +182,7 @@ namespace Socket {
                 &mreq,
                 sizeof(mreq)
             ) != 0) {
-                throw socket_exception("Multicast error - cannot add/drop multicast group");
+                throw SocketException("Multicast error - cannot add/drop multicast group");
             }
 
             return;
@@ -193,19 +193,19 @@ namespace Socket {
 
 #pragma region UDP Area
 
-    UDP_Client::UDP_Client(const char* address, uint16_t port)
+    UDPClient::UDPClient(const char* address, uint16_t port)
         : ClientSocket(address, port, e_socktype::DGRAM)
     {}
 
-    UDP_Client::UDP_Client(uint16_t port)
+    UDPClient::UDPClient(uint16_t port)
         : ClientSocket(nullptr, port, e_socktype::DGRAM)
     {}
 
-    ptrdiff_t UDP_Client::send(const char* data, const size_t len) const {
+    ptrdiff_t UDPClient::send(const char* data, const size_t len) const {
         return ::sendto(m_sock->sock, data, len, 0, (addr_t*)&m_sock->storage, m_sock->storage_len);
     }
 
-    ptrdiff_t UDP_Client::recv(char* data, const size_t len) const {
+    ptrdiff_t UDPClient::recv(char* data, const size_t len) const {
         addr_storage_t from{};
         socklen_t from_len = sizeof(addr_storage_t);
         ptrdiff_t res;
@@ -218,41 +218,41 @@ namespace Socket {
         return res;
     }
 
-    void UDP_Client::enable_broadcast_ipv4(bool enable) {
+    void UDPClient::enable_broadcast_ipv4(bool enable) {
         if (!m_sock || get_family() != e_family::IPV4)
-            throw socket_exception("Broadcast error - invalid setup: not IPV4 only or empty socket");
+            throw SocketException("Broadcast error - invalid setup: not IPV4 only or empty socket");
 
         enable_broadcast_on(m_sock->sock, enable);
     }
     
-    void UDP_Client::join_multicast(uint16_t gid, multicast_scope scope, bool join, int ttl) {
+    void UDPClient::join_multicast(uint16_t gid, multicast_scope scope, bool join, int ttl) {
         const auto current_family = get_family();
 
         if (!m_sock || current_family == e_family::UNSPEC || m_sock->type != e_socktype::DGRAM)
-            throw socket_exception("Multicast error - you cannot enable multicast on dual (UNSPEC) or non DGRAM socket.");
+            throw SocketException("Multicast error - you cannot enable multicast on dual (UNSPEC) or non DGRAM socket.");
 
         join_multicast_on(m_sock->sock, current_family, gid, scope, join, ttl);
     }
     
     
-    UDP_Broadcaster::UDP_Broadcaster(uint16_t port, uint16_t group, e_family family, multicast_scope scope, int ttl)
+    UDPBroadcaster::UDPBroadcaster(uint16_t port, uint16_t group, e_family family, multicast_scope scope, int ttl)
         : HostSocket(port, family, e_socktype::DGRAM), m_gid(group), m_scope(scope), is_broadcast(false)
     {
         if (family == e_family::UNSPEC) {
             m_sock.reset();
-            throw socket_exception("Invalid configuration on UDP_Broadcaster - family must be defined: IPV4 or IPV6, not UNSPEC!");
+            throw SocketException("Invalid configuration on UDPBroadcaster - family must be defined: IPV4 or IPV6, not UNSPEC!");
         }
 
         join_multicast_on(m_sock->sock, family, group, scope, true, ttl);
     }
 
-    UDP_Broadcaster::UDP_Broadcaster(uint16_t port)
+    UDPBroadcaster::UDPBroadcaster(uint16_t port)
         : HostSocket(port, e_family::IPV4, e_socktype::DGRAM), is_broadcast(true)
     {
         enable_broadcast_on(m_sock->sock, true);
     }
 
-    ptrdiff_t UDP_Broadcaster::send(const char* data, const size_t len) const {
+    ptrdiff_t UDPBroadcaster::send(const char* data, const size_t len) const {
         if (is_broadcast) {
             const auto current_cfg = get_config();
             _lunaris_socket_debug_c("BROADCASTING DATA IPV4 SIZE={} PORT={}", len, current_cfg.port);
@@ -319,11 +319,11 @@ namespace Socket {
     }
 
 
-    ptrdiff_t UDP_Host::UDP_Connection::send(const char* data, const size_t len) const {
+    ptrdiff_t UDPHost::UDPConnection::send(const char* data, const size_t len) const {
         return ::sendto(m_sock->sock, data, len, 0, (addr_t*)&m_sock->storage, m_sock->storage_len);
     }
 
-    ptrdiff_t UDP_Host::UDP_Connection::recv(char* data, const size_t len) {
+    ptrdiff_t UDPHost::UDPConnection::recv(char* data, const size_t len) {
         if (m_dgrams.size() == 0) 
             auto_wait_cond(m_dgram_trigger, 50, [this]{ return m_dgrams.size() > 0; });
         
@@ -335,24 +335,24 @@ namespace Socket {
         return pkg.recvd;
     }
 
-    bool UDP_Host::UDP_Connection::operator==(const UDP_Connection& o) const {
+    bool UDPHost::UDPConnection::operator==(const UDPConnection& o) const {
         return o.m_sock && this->m_sock && (*o.m_sock) == (*this->m_sock);
     }
 
-    bool UDP_Host::UDP_Connection::operator!=(const UDP_Connection& o) const {
+    bool UDPHost::UDPConnection::operator!=(const UDPConnection& o) const {
         return !o.m_sock || !this->m_sock || (*o.m_sock) != (*this->m_sock);
     }
 
-    UDP_Host::UDP_Connection::UDP_Connection(std::unique_ptr<sock_info>&& pre_cfg)
+    UDPHost::UDPConnection::UDPConnection(std::unique_ptr<sock_info>&& pre_cfg)
         : Base::ClientSocket(std::move(pre_cfg))
     {}
 
-    UDP_Host::UDP_Host(uint16_t port, e_family family)
+    UDPHost::UDPHost(uint16_t port, e_family family)
         : HostSocket(port, family, e_socktype::DGRAM),
           m_async_recv([this]{ async_recv(); })
     {}
 
-    UDP_Host::~UDP_Host() {
+    UDPHost::~UDPHost() {
         m_async_stop = true;
         m_async_recv.join();
 
@@ -360,9 +360,9 @@ namespace Socket {
         m_waiting_conns.clear();
     }
 
-    std::shared_ptr<UDP_Host::UDP_Connection> UDP_Host::accept() {
+    std::shared_ptr<UDPHost::UDPConnection> UDPHost::accept() {
         if (m_waiting_conns.size() == 0) {
-            _lunaris_socket_debug_c("ON WAIT UDP_HOST::ACCEPT");
+            _lunaris_socket_debug_c("ON WAIT UDPHost::ACCEPT");
             auto_wait_cond(m_wait_for_new_connection, 200, [this]{ return m_waiting_conns.size() > 0; });
         }
 
@@ -375,31 +375,31 @@ namespace Socket {
         return ptr;
     }
 
-    size_t UDP_Host::size() const {
+    size_t UDPHost::size() const {
         return m_waiting_conns.size() + m_accepted_conns.size();
     }
 
-    size_t UDP_Host::size_on_queue() const {
+    size_t UDPHost::size_on_queue() const {
         return m_waiting_conns.size();
     }
 
-    void UDP_Host::enable_broadcast_ipv4(bool enable) {
+    void UDPHost::enable_broadcast_ipv4(bool enable) {
         if (!m_sock || get_family() != e_family::IPV4)
-            throw socket_exception("Broadcast error - invalid setup: not IPV4 only or empty socket");
+            throw SocketException("Broadcast error - invalid setup: not IPV4 only or empty socket");
 
         enable_broadcast_on(m_sock->sock, enable);
     }
     
-    void UDP_Host::join_multicast(uint16_t gid, multicast_scope scope, bool join, int ttl) {
+    void UDPHost::join_multicast(uint16_t gid, multicast_scope scope, bool join, int ttl) {
         const auto current_family = get_family();
 
         if (!m_sock || current_family == e_family::UNSPEC || m_sock->type != e_socktype::DGRAM)
-            throw socket_exception("Multicast error - you cannot enable multicast on dual (UNSPEC) or non DGRAM socket.");
+            throw SocketException("Multicast error - you cannot enable multicast on dual (UNSPEC) or non DGRAM socket.");
 
         join_multicast_on(m_sock->sock, current_family, gid, scope, join, ttl);
     }
 
-    void UDP_Host::async_recv() {
+    void UDPHost::async_recv() {
         const auto check_sock_has_in = [](socket_t s) -> bool {
             constexpr unsigned long nfds = 1;
             poll_t poll[nfds];
@@ -415,12 +415,12 @@ namespace Socket {
         };
 
         if (!m_sock) { // UDP host failed to instantiate itself
-            _lunaris_socket_debug_c("UDP_HOST MALFORMED START, EMPTY SOCK. DROP.");
+            _lunaris_socket_debug_c("UDPHost MALFORMED START, EMPTY SOCK. DROP.");
             return;
         }
 #ifdef _WIN32
         if (!m_sock->wsarecvmsg_fn) { // Specific windows stuff
-            _lunaris_socket_debug_c("UDP_HOST MALFORMED START, NO RECVMSG DEFINED. DROP.");
+            _lunaris_socket_debug_c("UDPHost MALFORMED START, NO RECVMSG DEFINED. DROP.");
             return;
         }
 #endif
@@ -446,7 +446,7 @@ namespace Socket {
                 continue;
             }
 
-            _lunaris_socket_debug_c("UDP_HOST GOT PACKAGE EXPECTED_SIZE={}", buf_next);
+            _lunaris_socket_debug_c("UDPHost GOT PACKAGE EXPECTED_SIZE={}", buf_next);
 
             auto info = m_sock->make_ref();
             package pkg = {
@@ -508,20 +508,20 @@ namespace Socket {
 #endif
 
             if (pkg.recvd < 1) {
-                _lunaris_socket_debug_c("UDP_HOST DROPPED PACKAGE, FAILED");
+                _lunaris_socket_debug_c("UDPHost DROPPED PACKAGE, FAILED");
                 continue;
             }
 
             extract_scope_and_group_from_msghdr(msg, pkg);
 
             if (pkg.type == package::type::none) {
-                _lunaris_socket_debug_c("UDP_HOST GOT PACKAGE TYPE: DEFAULT");
+                _lunaris_socket_debug_c("UDPHost GOT PACKAGE TYPE: DEFAULT");
             }
             else if (pkg.type == package::type::broadcast) {
-                _lunaris_socket_debug_c("UDP_HOST GOT PACKAGE TYPE: BROADCAST");
+                _lunaris_socket_debug_c("UDPHost GOT PACKAGE TYPE: BROADCAST");
             }
             else {
-                _lunaris_socket_debug_c("UDP_HOST GOT PACKAGE TYPE: MULTICAST GROUP={} SCOPE={}", pkg.mc_group, (int)pkg.mc_scope);
+                _lunaris_socket_debug_c("UDPHost GOT PACKAGE TYPE: MULTICAST GROUP={} SCOPE={}", pkg.mc_group, (int)pkg.mc_scope);
             }
 
             { // First try to find target
@@ -564,17 +564,17 @@ namespace Socket {
             }
             // Second, if it doesn't find it, it is a new target!
 
-            auto con = std::shared_ptr<UDP_Connection>(new UDP_Connection(std::move(info)));
+            auto con = std::shared_ptr<UDPConnection>(new UDPConnection(std::move(info)));
             con->m_dgrams.push_back(std::move(pkg));
 
-            _lunaris_socket_debug_c("UDP_HOST GOT NEW CONN!");
+            _lunaris_socket_debug_c("UDPHost GOT NEW CONN!");
             std::unique_lock<std::shared_mutex> l(m_conns_mtx);
             m_waiting_conns.push_back(std::move(con));
             m_wait_for_new_connection.notify_one();
         }
     }
 
-    void UDP_Host::clear_weak_conns() {
+    void UDPHost::clear_weak_conns() {
         std::unique_lock<std::shared_mutex> l(m_conns_mtx);
         for(auto i = m_accepted_conns.begin(); i != m_accepted_conns.end();) {
             if (i->expired()) i = m_accepted_conns.erase(i);

@@ -5,12 +5,12 @@
 namespace Lunaris {
 namespace Socket {
 
-    class TCP_Host;
+    class TCPHost;
 
     /**
      * @brief TCP Client class for TCP connections to servers
      */
-    class TCP_Client : protected Base::ClientSocket {
+    class TCPClient : protected Base::ClientSocket {
     public:
         /**
          * @brief Construct a new TCP client object
@@ -18,8 +18,8 @@ namespace Socket {
          * @param address The address to connect to
          * @param port The port used for connection
          */
-        TCP_Client(const char* address, uint16_t port);
-        ~TCP_Client() override = default;
+        TCPClient(const char* address, uint16_t port);
+        ~TCPClient() override = default;
         
         /**
          * @brief Send a block of data through the socket
@@ -64,13 +64,13 @@ namespace Socket {
     private:
         using Base::ClientSocket::ClientSocket;
 
-        friend class TCP_Host;
+        friend class TCPHost;
     };
 
     /**
      * @brief TCP Host class for TCP hosting
      */
-    class TCP_Host : protected Base::HostSocket {
+    class TCPHost : protected Base::HostSocket {
     public:
         /**
          * @brief Construct a new TCP host object
@@ -78,15 +78,15 @@ namespace Socket {
          * @param port The port used for connection
          * @param family The family of the host
          */
-        TCP_Host(uint16_t port, e_family family = e_family::UNSPEC);
-        ~TCP_Host() override = default;
+        TCPHost(uint16_t port, e_family family = e_family::UNSPEC);
+        ~TCPHost() override = default;
 
         /**
          * @brief Waits and accepts new connection
          * 
-         * @return TCP_Client New client connected or throws on failure
+         * @return TCPClient New client connected or throws on failure
          */
-        TCP_Client accept() const;
+        TCPClient accept() const;
 
         using Base::BaseSocket::valid;
         using Base::BaseSocket::operator bool;

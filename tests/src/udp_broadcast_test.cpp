@@ -17,10 +17,10 @@ int main() {
 
 
     std::cout << "host>";
-    UDP_Host host(sel_port, e_family::IPV4);
+    UDPHost host(sel_port, e_family::IPV4);
 
     std::cout << "broadcaster>";
-    UDP_Broadcaster cli(sel_port);
+    UDPBroadcaster cli(sel_port);
 
     std::cout << "host_bc_on>";
     host.enable_broadcast_ipv4(true);

@@ -5,10 +5,10 @@
 namespace Lunaris {
 namespace Socket {
 
-    class socket_exception : public std::runtime_error {
+    class SocketException : public std::runtime_error {
     public:
-        explicit socket_exception(const std::string&) noexcept;
-        explicit socket_exception(const char*) noexcept;
+        explicit SocketException(const std::string&) noexcept;
+        explicit SocketException(const char*) noexcept;
 
         const char* what() const noexcept;
     };

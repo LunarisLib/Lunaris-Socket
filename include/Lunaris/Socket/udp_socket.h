@@ -27,7 +27,7 @@ namespace Socket {
      * @brief UDP Client class for UDP connections to servers
      * 
      */
-    class UDP_Client : protected Base::ClientSocket {
+    class UDPClient : protected Base::ClientSocket {
     public:
         /**
          * @brief Construct a new UDP client object
@@ -35,9 +35,9 @@ namespace Socket {
          * @param address The address to connect to
          * @param port The port used for connection
          */
-        UDP_Client(const char* address, uint16_t port);
-        UDP_Client(uint16_t port);
-        ~UDP_Client() override = default;
+        UDPClient(const char* address, uint16_t port);
+        UDPClient(uint16_t port);
+        ~UDPClient() override = default;
         
         /**
          * @brief Send a dataframe of data through the socket
@@ -83,13 +83,13 @@ namespace Socket {
     private:
         using Base::ClientSocket::ClientSocket;
 
-        friend class TCP_Host;
+        friend class TCPHost;
     };
 
     /**
      * @brief Specialized UDP Host class for broadcasting in multicast or broadcast modes
      */
-    class UDP_Broadcaster : protected Base::HostSocket {
+    class UDPBroadcaster : protected Base::HostSocket {
     public:
         /**
          * @brief Construct a new UDP broadcaster object in multicast mode
@@ -100,14 +100,14 @@ namespace Socket {
          * @param scope How far it goes in scope (defaults to link local)
          * @param ttl Time To Live, how many bounces around should it allow before routers and computers stop broadcasting
          */
-        UDP_Broadcaster(uint16_t port, uint16_t group, e_family family, multicast_scope scope = multicast_scope::link_local, int ttl = 1);
+        UDPBroadcaster(uint16_t port, uint16_t group, e_family family, multicast_scope scope = multicast_scope::link_local, int ttl = 1);
         
         /**
          * @brief Construct a new UDP broadcaster object in broadcast mode (IPV4)
          * 
          * @param port The port used for connection
          */
-        UDP_Broadcaster(uint16_t port);
+        UDPBroadcaster(uint16_t port);
 
 
         /**
@@ -135,7 +135,7 @@ namespace Socket {
      * @brief UDP Host class for UDP hosting
      * 
      */
-    class UDP_Host : protected Base::HostSocket {
+    class UDPHost : protected Base::HostSocket {
     public:
         struct package {
             enum class type : uint8_t { none, broadcast, multicast };
@@ -152,7 +152,7 @@ namespace Socket {
         /**
          * @brief A pseudo client class for UDP connections received by UDP Host
          */
-        class UDP_Connection : protected Base::ClientSocket {
+        class UDPConnection : protected Base::ClientSocket {
         public:
             /**
              * @brief Send a dataframe of data through the socket
@@ -172,8 +172,8 @@ namespace Socket {
              */
             ptrdiff_t recv(char* data, const size_t len);
 
-            bool operator==(const UDP_Connection&) const;
-            bool operator!=(const UDP_Connection&) const;
+            bool operator==(const UDPConnection&) const;
+            bool operator!=(const UDPConnection&) const;
 
             using Base::BaseSocket::valid;
             using Base::BaseSocket::operator bool;
@@ -182,9 +182,9 @@ namespace Socket {
             using Base::BaseSocket::get_config;
             using Base::BaseSocket::close;
         private:
-            UDP_Connection(std::unique_ptr<sock_info>&& pre_cfg);
+            UDPConnection(std::unique_ptr<sock_info>&& pre_cfg);
 
-            friend class UDP_Host;
+            friend class UDPHost;
 
             std::mutex m_drams_mtx;
             std::condition_variable m_dgram_trigger;
@@ -197,15 +197,15 @@ namespace Socket {
          * @param port The port used for connection
          * @param family The family of the host
          */
-        UDP_Host(uint16_t port, e_family family = e_family::UNSPEC);
-        ~UDP_Host() override;
+        UDPHost(uint16_t port, e_family family = e_family::UNSPEC);
+        ~UDPHost() override;
 
         /**
          * @brief Attempts to get a pseudo connection. Waits indefinitely
          * 
-         * @return std::shared_ptr<UDP_Connection> A pseudo-client to manage received package
+         * @return std::shared_ptr<UDPConnection> A pseudo-client to manage received package
          */
-        std::shared_ptr<UDP_Connection> accept();
+        std::shared_ptr<UDPConnection> accept();
 
         /**
          * @brief Total size of what is in queue to be accepted + pseudo clients
@@ -253,8 +253,8 @@ namespace Socket {
         std::atomic_bool m_async_stop = false;
         std::shared_mutex m_conns_mtx;
         std::condition_variable m_wait_for_new_connection;
-        std::deque<std::shared_ptr<UDP_Connection>> m_waiting_conns;
-        std::vector<std::weak_ptr<UDP_Connection>> m_accepted_conns;
+        std::deque<std::shared_ptr<UDPConnection>> m_waiting_conns;
+        std::vector<std::weak_ptr<UDPConnection>> m_accepted_conns;
     };
 
 

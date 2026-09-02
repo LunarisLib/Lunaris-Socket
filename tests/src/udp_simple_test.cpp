@@ -17,10 +17,10 @@ int main() {
     std::cout << "=== > Initializing integration test with path '" << sel_path << "' and random port selected '" << sel_port << "' < ===\n";
 
     std::cout << "host>";
-    UDP_Host host(sel_port);
+    UDPHost host(sel_port);
 
     std::cout << "client>";
-    UDP_Client cli(sel_path, sel_port);
+    UDPClient cli(sel_path, sel_port);
 
     std::cout << "gen_strings>";
     const std::string blocks[] = {

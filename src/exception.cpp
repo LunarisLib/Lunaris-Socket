@@ -4,17 +4,17 @@
 namespace Lunaris {
 namespace Socket {
 
-    socket_exception::socket_exception(const std::string& msg) noexcept
+    SocketException::SocketException(const std::string& msg) noexcept
         : std::runtime_error(msg)
     {
     }
 
-    socket_exception::socket_exception(const char* msg) noexcept
+    SocketException::SocketException(const char* msg) noexcept
         : std::runtime_error(msg)
     {
     }
 
-    const char* socket_exception::what() const noexcept {
+    const char* SocketException::what() const noexcept {
         return std::runtime_error::what();
     }
 

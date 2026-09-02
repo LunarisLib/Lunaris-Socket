@@ -188,7 +188,7 @@ namespace Base {
         snprintf(port_cstr, sizeof(port_cstr), "%hu", port);
 
         if (getaddrinfo(address, port_cstr, &hints, &info) != 0)
-            throw socket_exception("Could not instantiate client socket - could not resolve address, port or other config");
+            throw SocketException("Could not instantiate client socket - could not resolve address, port or other config");
 
         for (auto AI = info; AI != nullptr; AI = AI->ai_next) {
             socket_t s = ::socket(AI->ai_family, AI->ai_socktype, AI->ai_protocol);
@@ -208,7 +208,7 @@ namespace Base {
         }
 
         ::freeaddrinfo(info);
-        throw socket_exception("Could not instantiate client socket - failed to find suitable config");
+        throw SocketException("Could not instantiate client socket - failed to find suitable config");
     }
 
 
@@ -230,7 +230,7 @@ namespace Base {
         );
 
         if (!platform::is_socket_valid(s))
-            throw socket_exception("Could not instantiate host socket - failed to create socket");
+            throw SocketException("Could not instantiate host socket - failed to create socket");
 
         //void* any_addr = using_v6 ? (void*)new sockaddr_in6() : (void*)new sockaddr_in();
         addr_storage_t any_addr{};
@@ -253,21 +253,21 @@ namespace Base {
 
         if (family == e_family::UNSPEC) {
             if (platform::set_socket_opt(dev->sock, IPPROTO_IPV6, IPV6_V6ONLY, 0) != 0) {
-                throw socket_exception("Could not instantiate host socket - failed to enable dual stack"); // implicit close socket on dev
+                throw SocketException("Could not instantiate host socket - failed to enable dual stack"); // implicit close socket on dev
             }
         }
 
         if (platform::set_socket_opt(dev->sock, SOL_SOCKET, SO_REUSEADDR_AUTO, 1) != 0) {
-            throw socket_exception("Could not instantiate host socket - failed to enable reuse addr"); // implicit close socket on dev                    
+            throw SocketException("Could not instantiate host socket - failed to enable reuse addr"); // implicit close socket on dev                    
         }
 
         if (::bind(dev->sock, (addr_t*)&any_addr, any_addr_len) != 0) {
-            throw socket_exception("Could not instantiate host socket - failed to bind to desired config"); // implicit close socket on dev
+            throw SocketException("Could not instantiate host socket - failed to bind to desired config"); // implicit close socket on dev
         }
 
         if (dev->type == e_socktype::STREAM) {
             if (::listen(dev->sock, 5) != 0) {
-                throw socket_exception("Could not instantiate host socket - failed to enable listen on STREAM socket"); // implicit close socket on dev
+                throw SocketException("Could not instantiate host socket - failed to enable listen on STREAM socket"); // implicit close socket on dev
             }
         }
 

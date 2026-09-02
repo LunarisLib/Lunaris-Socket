@@ -8,11 +8,11 @@ using namespace Lunaris::Socket;
 int main() {
     std::cout << "Using one of the tests as example here.\n";
 
-    TCP_Host host(55366);
+    TCPHost host(55366);
 
-    TCP_Client cli("localhost", 55366);
+    TCPClient cli("localhost", 55366);
 
-    TCP_Client hst = host.accept();
+    TCPClient hst = host.accept();
     if (!hst) throw std::runtime_error("Accept resulted in invalid client.");
 
 

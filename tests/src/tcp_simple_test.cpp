@@ -14,10 +14,10 @@ int main() {
     std::cout << "=== > Initializing integration test with path '" << sel_path << "' and random port selected '" << sel_port << "' < ===\n";
 
     std::cout << "host>";
-    TCP_Host host(sel_port);
+    TCPHost host(sel_port);
 
     std::cout << "client>";
-    TCP_Client cli(sel_path, sel_port);
+    TCPClient cli(sel_path, sel_port);
 
     std::cout << "gen_strings>";
     const std::string blocks[] = {
@@ -27,7 +27,7 @@ int main() {
     };
 
     std::cout << "accept>";
-    TCP_Client hst = host.accept();
+    TCPClient hst = host.accept();
     if (!hst) throw std::runtime_error("Accept resulted in invalid client.");
 
     std::cout << "send_all_cli>";
